@@ -1,0 +1,616 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		FB21555E2E78553900A1798E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FB2155482E78553800A1798E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FB21554F2E78553800A1798E;
+			remoteInfo = SnapAI;
+		};
+		FB2155682E78553900A1798E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FB2155482E78553800A1798E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FB21554F2E78553800A1798E;
+			remoteInfo = SnapAI;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		FB2155502E78553800A1798E /* SnapAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnapAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FB21555D2E78553900A1798E /* SnapAITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnapAITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FB2155672E78553900A1798E /* SnapAIUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnapAIUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FB2155B22E7937D200A1798E /* Exceptions for "SnapAI" folder in "SnapAI" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AppColors.swift,
+				AppImages.swift,
+				Assets.xcassets,
+				CameraScreen.swift,
+				FoodInfoScreen.swift,
+				MainScreen.swift,
+				MealDetailScreen.swift,
+				OnBoardingData.swift,
+				OnBoardingFlow.swift,
+				OnBoardingViewModel.swift,
+				PayWallScreen.swift,
+				PlanScreen.swift,
+				ProgressBar.swift,
+				SettingScreen.swift,
+				SnapAIApp.swift,
+			);
+			target = FB21554F2E78553800A1798E /* SnapAI */;
+		};
+		FB2155B32E7937D200A1798E /* Exceptions for "SnapAI" folder in "SnapAIUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AppColors.swift,
+				AppImages.swift,
+				Assets.xcassets,
+				CameraScreen.swift,
+				FoodInfoScreen.swift,
+				MainScreen.swift,
+				MealDetailScreen.swift,
+				OnBoardingData.swift,
+				OnBoardingFlow.swift,
+				OnBoardingViewModel.swift,
+				PayWallScreen.swift,
+				PlanScreen.swift,
+				ProgressBar.swift,
+				SettingScreen.swift,
+				SnapAIApp.swift,
+			);
+			target = FB2155662E78553900A1798E /* SnapAIUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FB2155602E78553900A1798E /* SnapAITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SnapAITests;
+			sourceTree = "<group>";
+		};
+		FB21556A2E78553900A1798E /* SnapAIUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SnapAIUITests;
+			sourceTree = "<group>";
+		};
+		FB2155A92E7937D100A1798E /* SnapAI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FB2155B22E7937D200A1798E /* Exceptions for "SnapAI" folder in "SnapAI" target */,
+				FB2155B32E7937D200A1798E /* Exceptions for "SnapAI" folder in "SnapAIUITests" target */,
+			);
+			path = SnapAI;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FB21554D2E78553800A1798E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB21555A2E78553900A1798E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB2155642E78553900A1798E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		FB2155472E78553800A1798E = {
+			isa = PBXGroup;
+			children = (
+				FB2155A92E7937D100A1798E /* SnapAI */,
+				FB2155602E78553900A1798E /* SnapAITests */,
+				FB21556A2E78553900A1798E /* SnapAIUITests */,
+				FB2155512E78553800A1798E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FB2155512E78553800A1798E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FB2155502E78553800A1798E /* SnapAI.app */,
+				FB21555D2E78553900A1798E /* SnapAITests.xctest */,
+				FB2155672E78553900A1798E /* SnapAIUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FB21554F2E78553800A1798E /* SnapAI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FB2155712E78553900A1798E /* Build configuration list for PBXNativeTarget "SnapAI" */;
+			buildPhases = (
+				FB21554C2E78553800A1798E /* Sources */,
+				FB21554D2E78553800A1798E /* Frameworks */,
+				FB21554E2E78553800A1798E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SnapAI;
+			packageProductDependencies = (
+			);
+			productName = SnapAI;
+			productReference = FB2155502E78553800A1798E /* SnapAI.app */;
+			productType = "com.apple.product-type.application";
+		};
+		FB21555C2E78553900A1798E /* SnapAITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FB2155742E78553900A1798E /* Build configuration list for PBXNativeTarget "SnapAITests" */;
+			buildPhases = (
+				FB2155592E78553900A1798E /* Sources */,
+				FB21555A2E78553900A1798E /* Frameworks */,
+				FB21555B2E78553900A1798E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FB21555F2E78553900A1798E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				FB2155602E78553900A1798E /* SnapAITests */,
+			);
+			name = SnapAITests;
+			packageProductDependencies = (
+			);
+			productName = SnapAITests;
+			productReference = FB21555D2E78553900A1798E /* SnapAITests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		FB2155662E78553900A1798E /* SnapAIUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FB2155772E78553900A1798E /* Build configuration list for PBXNativeTarget "SnapAIUITests" */;
+			buildPhases = (
+				FB2155632E78553900A1798E /* Sources */,
+				FB2155642E78553900A1798E /* Frameworks */,
+				FB2155652E78553900A1798E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FB2155692E78553900A1798E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				FB21556A2E78553900A1798E /* SnapAIUITests */,
+				FB2155A92E7937D100A1798E /* SnapAI */,
+			);
+			name = SnapAIUITests;
+			packageProductDependencies = (
+			);
+			productName = SnapAIUITests;
+			productReference = FB2155672E78553900A1798E /* SnapAIUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FB2155482E78553800A1798E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					FB21554F2E78553800A1798E = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					FB21555C2E78553900A1798E = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = FB21554F2E78553800A1798E;
+					};
+					FB2155662E78553900A1798E = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = FB21554F2E78553800A1798E;
+					};
+				};
+			};
+			buildConfigurationList = FB21554B2E78553800A1798E /* Build configuration list for PBXProject "SnapAI" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = FB2155472E78553800A1798E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FB2155512E78553800A1798E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FB21554F2E78553800A1798E /* SnapAI */,
+				FB21555C2E78553900A1798E /* SnapAITests */,
+				FB2155662E78553900A1798E /* SnapAIUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FB21554E2E78553800A1798E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB21555B2E78553900A1798E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB2155652E78553900A1798E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FB21554C2E78553800A1798E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB2155592E78553900A1798E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB2155632E78553900A1798E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FB21555F2E78553900A1798E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FB21554F2E78553800A1798E /* SnapAI */;
+			targetProxy = FB21555E2E78553900A1798E /* PBXContainerItemProxy */;
+		};
+		FB2155692E78553900A1798E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FB21554F2E78553800A1798E /* SnapAI */;
+			targetProxy = FB2155682E78553900A1798E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		FB21556F2E78553900A1798E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		FB2155702E78553900A1798E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		FB2155722E78553900A1798E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 693RJ6S5KS;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera Permission";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Camera Roll Permission";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.SnapAI.SnapAI;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FB2155732E78553900A1798E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 693RJ6S5KS;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera Permission";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Camera Roll Permission";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.SnapAI.SnapAI;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		FB2155752E78553900A1798E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.SnapAI.SnapAITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SnapAI.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SnapAI";
+			};
+			name = Debug;
+		};
+		FB2155762E78553900A1798E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.SnapAI.SnapAITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SnapAI.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SnapAI";
+			};
+			name = Release;
+		};
+		FB2155782E78553900A1798E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.SnapAI.SnapAIUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SnapAI;
+			};
+			name = Debug;
+		};
+		FB2155792E78553900A1798E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.SnapAI.SnapAIUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SnapAI;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FB21554B2E78553800A1798E /* Build configuration list for PBXProject "SnapAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB21556F2E78553900A1798E /* Debug */,
+				FB2155702E78553900A1798E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FB2155712E78553900A1798E /* Build configuration list for PBXNativeTarget "SnapAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB2155722E78553900A1798E /* Debug */,
+				FB2155732E78553900A1798E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FB2155742E78553900A1798E /* Build configuration list for PBXNativeTarget "SnapAITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB2155752E78553900A1798E /* Debug */,
+				FB2155762E78553900A1798E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FB2155772E78553900A1798E /* Build configuration list for PBXNativeTarget "SnapAIUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB2155782E78553900A1798E /* Debug */,
+				FB2155792E78553900A1798E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FB2155482E78553800A1798E /* Project object */;
+}

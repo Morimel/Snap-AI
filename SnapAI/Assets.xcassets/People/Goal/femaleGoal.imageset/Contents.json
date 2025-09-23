@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "filename" : "cf4c7065-c330-4f38-99dc-52d46410633d (1) (1) копия 1.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "cf4c7065-c330-4f38-99dc-52d46410633d (1) (1) копия 1@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "cf4c7065-c330-4f38-99dc-52d46410633d (1) (1) копия 1@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
