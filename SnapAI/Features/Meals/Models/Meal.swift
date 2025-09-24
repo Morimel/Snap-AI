@@ -1,0 +1,38 @@
+//
+//  Meal.swift
+//  SnapAI
+//
+//  Created by Isa Melsov on 23/9/25.
+//
+
+import SwiftUI
+
+struct Meal: Codable {
+    var title: String = ""
+    var calories: Int = 0
+    var proteins: Int = 0
+    var fats: Int = 0
+    var carbs: Int = 0
+    var servings: Int = 1
+    var benefitScore: Int = 5   // 0…10 на макете "5/10"
+    var ingredients: [Ingredient] = []
+}
+
+struct Ingredient: Identifiable, Codable, Hashable {
+    var id: UUID = .init()
+    var name: String
+    var kcal: Int
+}
+
+extension Meal {
+    static let mock = Meal(
+        title: "Teriyaki chicken with rice",
+        calories: 241, proteins: 50, fats: 32, carbs: 150, servings: 1, benefitScore: 5,
+        ingredients: [
+            .init(name: "Chicken breast", kcal: 330),
+            .init(name: "Teriyaki sauce", kcal: 210),
+            .init(name: "Vegetable oil", kcal: 270),
+            .init(name: "Rice", kcal: 340)
+        ]
+    )
+}
