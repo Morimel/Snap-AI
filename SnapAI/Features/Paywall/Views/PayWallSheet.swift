@@ -9,37 +9,31 @@ import SwiftUI
 
 struct PayWallSheet: View {
     @Binding var selected: Product
+    var ctaTitle: String
     var onStart: () -> Void
+
     var body: some View {
         VStack(spacing: 14) {
-            // Заголовок
             Text("Update plan")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(AppColors.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-            
-            // Карточки тарифов
+
             HStack(spacing: 12) {
-                PlanCard(product: .monthly, isSelected: selected == .monthly) {
-                    selected = .monthly
-                }
-                PlanCard(product: .annual,  isSelected: selected == .annual) {
-                    selected = .annual
-                }
+                PlanCard(product: .monthly, isSelected: selected == .monthly) { selected = .monthly }
+                PlanCard(product: .annual,  isSelected: selected == .annual)  { selected = .annual  }
             }
             .padding(.horizontal, 16)
-            
-            // подпись
+
             Text("*7-day free trial, then $19.99/month")
                 .font(.system(size: 12))
                 .foregroundStyle(AppColors.primary.opacity(0.7))
                 .padding(.top, 2)
-            
-            // CTA
+
             Button(action: onStart) {
-                Text("Start for free")
+                Text(ctaTitle)
                     .font(.system(size: 20, weight: .semibold))
                     .frame(maxWidth: .infinity, minHeight: 60)
                     .foregroundColor(.white)
@@ -51,4 +45,9 @@ struct PayWallSheet: View {
         }
         .shadow(color: .black.opacity(0.08), radius: 12, y: -2)
     }
+}
+
+
+#Preview {
+    PayWallSheet(selected: .constant(.monthly), ctaTitle: "Title", onStart: { })
 }

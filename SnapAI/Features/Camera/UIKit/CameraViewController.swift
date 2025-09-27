@@ -9,27 +9,33 @@ import UIKit
 import SwiftUI
 import AVFoundation
 
-// MARK: - Camera VC
 final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
 
-    // AV
     private let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "camera.session.queue", qos: .userInitiated)
     private let output = AVCapturePhotoOutput()
     private var previewLayer: AVCaptureVideoPreviewLayer!
     private var videoDevice: AVCaptureDevice?
     private var input: AVCaptureDeviceInput?
-    
     private var cachedOrientation: AVCaptureVideoOrientation = .portrait
+    private var isConfigured = false
+    
+    private var isCapturing = false
 
-
-    // Bridge
     private let coordinator: BridgingCoordinator
 
     init(coordinator: BridgingCoordinator) {
         self.coordinator = coordinator
         super.init(nibName: nil, bundle: nil)
     }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        sessionQueue.sync {
+            if self.session.isRunning { self.session.stopRunning() }
+        }
+    }
+
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     override func viewDidLoad() {
@@ -38,12 +44,60 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
         previewLayer.videoGravity = .resizeAspectFill
         view.layer.addSublayer(previewLayer)
 
-        // Конфиг сессии и подготовка — строго на фоновой очереди
-        sessionQueue.async { [weak self] in
-            self?.configureSessionIfNeeded()
+
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        // ★ слушатели команд/прерываний
+        NotificationCenter.default.addObserver(self, selector: #selector(takePhotoAction),         name: .takePhoto, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(toggleTorchNote(_:)),     name: .toggleTorch, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(pauseCamera),             name: .pauseCamera, object: nil)   // ★
+        NotificationCenter.default.addObserver(self, selector: #selector(resumeCamera),            name: .resumeCamera, object: nil)  // ★
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionWasInterrupted(_:)), name: .AVCaptureSessionWasInterrupted, object: session) // ★
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)), name: .AVCaptureSessionInterruptionEnded, object: session) // ★
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError(_:)), name: .AVCaptureSessionRuntimeError, object: session) // ★
+
+        // ★ стартуем только при наличии разрешения
+        ensureAuthorization { [weak self] granted in
+            guard let self, granted else { return }
+            self.sessionQueue.async {
+                self.configureSessionIfNeeded()
+                if !self.session.isRunning { self.session.startRunning() }
+            }
         }
     }
-    
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        NotificationCenter.default.removeObserver(self)
+
+        // Сначала скрыть слой превью (UI), потом стоп сессии
+        DispatchQueue.main.async {
+            self.previewLayer.connection?.isEnabled = false
+            self.previewLayer.isHidden = true
+        }
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            if self.session.isRunning { self.session.stopRunning() }
+        }
+    }
+
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer.frame = view.bounds
+        updatePreviewOrientationAndCache()
+    }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to:size, with: coordinator)
+        coordinator.animate(alongsideTransition: nil) { _ in
+            self.updatePreviewOrientationAndCache()
+        }
+    }
+
     private func updatePreviewOrientationAndCache() {
         assert(Thread.isMainThread)
         let ui = uiVideoOrientation()
@@ -53,7 +107,6 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
         }
     }
 
-    // старую currentVideoOrientation переименуем, чтобы не путать:
     private func uiVideoOrientation() -> AVCaptureVideoOrientation {
         let interface = view.window?.windowScene?.interfaceOrientation ?? .portrait
         switch interface {
@@ -65,9 +118,9 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
         }
     }
 
-    private var isConfigured = false
     private func configureSessionIfNeeded() {
         guard !isConfigured else { return }
+
         session.beginConfiguration()
         session.sessionPreset = .photo
 
@@ -85,7 +138,8 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
             session.addOutput(output)
             output.maxPhotoQualityPrioritization = .speed
 
-            if let dev = self.videoDevice {
+            // ★ защита для iOS 16 — этот блок только с iOS 17 API
+            if #available(iOS 17.0, *), let dev = self.videoDevice {
                 let supported = dev.activeFormat.supportedMaxPhotoDimensions
                 let sorted = supported.sorted { max($0.width, $0.height) < max($1.width, $1.height) }
                 let cap: Int32 = 2048
@@ -97,47 +151,6 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
         session.commitConfiguration()
         isConfigured = true
     }
-
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        previewLayer.frame = view.bounds
-        updatePreviewOrientationAndCache()
-    }
-    
-    
-    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-        super.viewWillTransition(to:size, with: coordinator)
-        coordinator.animate(alongsideTransition: nil) { _ in
-            self.updatePreviewOrientationAndCache()   // <-- МЕЙН
-        }
-    }
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-
-        // единственный слушатель нотификаций — VC
-        NotificationCenter.default.addObserver(self, selector: #selector(takePhotoAction), name: .takePhoto, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(toggleTorchNote(_:)), name: .toggleTorch, object: nil)
-
-        // запуск сессии на бэке
-        sessionQueue.async { [weak self] in
-            guard let self else { return }
-            self.configureSessionIfNeeded()
-            if !self.session.isRunning { self.session.startRunning() }
-        }
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        NotificationCenter.default.removeObserver(self)
-
-        // остановка сессии на бэке
-        sessionQueue.async { [weak self] in
-            guard let self else { return }
-            if self.session.isRunning { self.session.stopRunning() }
-        }
-    }
-
 
     // MARK: - Torch
 
@@ -165,11 +178,12 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
 
     func capture() {
         sessionQueue.async {
-            guard self.session.isRunning else { return }
+            guard self.session.isRunning, !self.isCapturing else { return }
+            self.isCapturing = true
 
             if let conn = self.output.connection(with: .video),
                conn.isVideoOrientationSupported {
-                conn.videoOrientation = self.cachedOrientation   // <-- только кэш
+                conn.videoOrientation = self.cachedOrientation
             }
 
             let settings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])
@@ -178,16 +192,104 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
         }
     }
 
-    // MARK: - AVCapturePhotoCaptureDelegate
-
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto,
                      error: Error?) {
-        guard error == nil, let data = photo.fileDataRepresentation(),
+        defer { isCapturing = false }                 // снимок завершён — можно снова
+        guard error == nil,
+              let data = photo.fileDataRepresentation(),
               let image = UIImage(data: data) else { return }
-        DispatchQueue.main.async {
-            self.coordinator.capturedImage = image
+
+        // 1) Останавливаем сессию на фоновой очереди
+        sessionQueue.async {
+            if self.session.isRunning { self.session.stopRunning() }
+
+            // 2) Скрываем превью на главном потоке
+            DispatchQueue.main.async {
+                self.previewLayer.connection?.isEnabled = false
+                self.previewLayer.isHidden = true
+
+                // 3) И только теперь отдаём фото наружу
+                self.coordinator.capturedImage = image
+            }
+        }
+    }
+
+
+    // MARK: - Pause / Resume  ★
+
+    @objc private func pauseCamera() {
+        sessionQueue.async {
+            if self.session.isRunning { self.session.stopRunning() }
+            DispatchQueue.main.async {
+                self.previewLayer.connection?.isEnabled = false
+                self.previewLayer.isHidden = true
+            }
+        }
+    }
+
+    @objc private func resumeCamera() {
+        // Дебаунс/стабилизация: чуть подождём, чтобы закончились транзишны/оверлеи
+        let delay: DispatchTimeInterval = .milliseconds(150)
+        sessionQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self else { return }
+
+            // Проверку видимости VC и любые обращения к вью — ТОЛЬКО на main
+            var canShowPreview = false
+            DispatchQueue.main.sync {
+                canShowPreview = self.isViewLoaded && (self.view.window != nil)
+                if canShowPreview {
+                    self.previewLayer.connection?.isEnabled = true
+                    self.previewLayer.isHidden = false
+                }
+            }
+            guard canShowPreview else { return }
+
+            // Движок камеры — на sessionQueue
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
+        }
+    }
+
+
+
+    // MARK: - Interruption / Errors  ★
+
+    @objc private func sessionWasInterrupted(_ note: Notification) {
+        // напр., входящий звонок / переход в бекграунд
+        // тут можно показать плашку/иконку «Пауза»
+        // print("Session interrupted: \(note.userInfo?[AVCaptureSessionInterruptionReasonKey] ?? "")")
+    }
+
+    @objc private func sessionInterruptionEnded(_ note: Notification) {
+        // по окончании прерывания можно перезапустить
+        resumeCamera()
+    }
+
+    @objc private func sessionRuntimeError(_ note: Notification) {
+        // попытка мягко восстановить после ошибки
+        sessionQueue.async {
+            self.session.stopRunning()
+            self.session.startRunning()
+        }
+    }
+
+    // MARK: - Authorization  ★
+
+    private func ensureAuthorization(_ completion: @escaping (Bool) -> Void) {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            completion(true)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                completion(granted)
+            }
+        default:
+            completion(false)
         }
     }
 }
+
+
 

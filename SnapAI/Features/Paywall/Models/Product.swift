@@ -29,12 +29,14 @@ enum Product: String, CaseIterable, Identifiable {
         case .annual:  return "per year"
         }
     }
-    var badge: (text: String, foreground: Color, background: Color)? {
+    var badge: (text: String, foreground1: Color, background1: Color, foreground2: Color, background2: Color)? {
         switch self {
         case .monthly:
-            return ("Popular", .white, AppColors.secondary)
+            return ("Popular", AppColors.primary, AppColors.primary.opacity(0.12), .white, AppColors.secondary
+)
         case .annual:
-            return ("Save 75%", AppColors.primary, AppColors.primary.opacity(0.12))
+            return ("Save 75%", AppColors.primary, AppColors.primary.opacity(0.12), .white, AppColors.secondary
+)
         }
     }
 }

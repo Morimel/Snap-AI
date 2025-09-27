@@ -30,7 +30,7 @@ struct MacroSummaryCard: View {
                      gradient: LinearGradient(gradient: Gradient(colors: [AppColors.customOrange, AppColors.primary]),
                                               startPoint: .leading, endPoint: .trailing))
         }
-        .padding(20)
+        .padding(.vertical)
     }
 }
 

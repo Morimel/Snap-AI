@@ -18,5 +18,6 @@ enum AppColors {
     static let customOrange = Color("CustomOrangeColor")
     static let customBlue = Color("CustomBlueColor")
     static let customGreen = Color("CustomGreenColor")
-
+    
+    static let splashBackground = Color("SplashBackgroundColor")
 }

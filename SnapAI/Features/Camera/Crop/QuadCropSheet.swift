@@ -30,23 +30,23 @@ struct QuadCropSheet: View {
                     .scaledToFit()
                     .background(Color.black)
                     .overlay(
-                            GeometryReader { g in
-                                Color.clear
-                                    .allowsHitTesting(false)
-                                    .onAppear {
-                                        // контейнер кадра изображения в координатах cropSpace
-                                        let container = g.frame(in: .named("cropSpace"))
-                                        let fit = aspectFitRect(img: image.size, in: container.size)
-                                        imageRect = fit.offsetBy(dx: container.minX, dy: container.minY)
-                                    }
-                                    .onChange(of: g.size) { _ in
-                                        let container = g.frame(in: .named("cropSpace"))
-                                        let fit = aspectFitRect(img: image.size, in: container.size)
-                                        imageRect = fit.offsetBy(dx: container.minX, dy: container.minY)
-                                    }
-                            }
-                        )
-                        .allowsHitTesting(false)
+                        GeometryReader { g in
+                            Color.clear
+                                .allowsHitTesting(false)
+                                .onAppear {
+                                    // контейнер кадра изображения в координатах cropSpace
+                                    let container = g.frame(in: .named("cropSpace"))
+                                    let fit = aspectFitRect(img: image.size, in: container.size)
+                                    imageRect = fit.offsetBy(dx: container.minX, dy: container.minY)
+                                }
+                                .onChange(of: g.size) { _ in
+                                    let container = g.frame(in: .named("cropSpace"))
+                                    let fit = aspectFitRect(img: image.size, in: container.size)
+                                    imageRect = fit.offsetBy(dx: container.minX, dy: container.minY)
+                                }
+                        }
+                    )
+                    .allowsHitTesting(false)
                 
                 if imageRect.width > 0 {
                     DimOut(quad: quad)
@@ -87,13 +87,24 @@ struct QuadCropSheet: View {
         }
         // Внутри QuadCropSheet
         // Панель внизу поверх всего
+        // ↓ замени весь .overlay(alignment: .bottom) на это
         .overlay(alignment: .bottom) {
-            HStack(spacing: 16) {
-                Button("Retake", action: onRetake)
-                // на время диагностики — системный стиль, чтобы исключить кастомный
-                    .buttonStyle(.bordered)
-                
-                Button("Use") {
+            HStack(spacing: 28) {
+                CircleActionButton(systemImage: "arrow.counterclockwise") {
+                    onRetake()
+                }
+
+                Spacer(minLength: 0)
+
+                CircleActionButton {
+                    if isProcessing {
+                        ProgressView().progressViewStyle(.circular).tint(AppColors.primary)
+                    } else {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(AppColors.primary)
+                    }
+                } action: {
                     guard !isProcessing else { return }
                     isProcessing = true
                     let cropRect = rectFromQuad(quad)
@@ -108,20 +119,30 @@ struct QuadCropSheet: View {
                         }
                     }
                 }
-                .buttonStyle(.borderedProminent) // системный стиль для наглядности
                 .disabled(isProcessing)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(.ultraThinMaterial)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(AppColors.secondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(LinearGradient(colors: [.white.opacity(0.6), .clear],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                            .blendMode(.plusLighter)
+                    )
+            )
+            .shadow(color: .black.opacity(0.15), radius: 20, y: 8)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
             .ignoresSafeArea(edges: .bottom)
-            .zIndex(100) // ← гарантируем верхний слой
+            .zIndex(100)
         }
-        
-        
-        
-        .interactiveDismissDisabled()
+
     }
+    
+   
     
     // helpers
     private func isZero(_ q: Quad) -> Bool { q.tl == .zero && q.tr == .zero && q.br == .zero && q.bl == .zero }
@@ -192,6 +213,37 @@ struct QuadCropSheet: View {
         let ctx = CIContext()
         guard let outCG = ctx.createCGImage(oriented.cropped(to: cropCI), from: cropCI) else { return image }
         return UIImage(cgImage: outCG, scale: image.scale, orientation: .up)
+    }
+}
+
+
+#Preview {
+    QuadCropSheet(
+        image: .previewCropImage,   // плейсхолдер ниже
+        initialQuad: nil,
+        onRetake: {},
+        onUse: { _ in }
+    )
+    .preferredColorScheme(.dark)
+}
+
+private extension UIImage {
+    static var previewCropImage: UIImage {
+        let size = CGSize(width: 1200, height: 800)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            let cg = ctx.cgContext
+            
+            // фон
+            cg.setFillColor(UIColor.darkGray.cgColor)
+            cg.fill(CGRect(origin: .zero, size: size))
+            
+            // «лист бумаги»
+            let doc = CGRect(x: 220, y: 140, width: 760, height: 520)
+            cg.setFillColor(UIColor.white.cgColor)
+            let path = UIBezierPath(roundedRect: doc, cornerRadius: 16)
+            cg.addPath(path.cgPath)
+            cg.fillPath()
+        }
     }
 }
 

@@ -69,8 +69,14 @@ enum AppImages {
         static let toolsPlate = Image("toolsPlate")
         static let statistic = Image("statistic")
         static let mark = Image("mark")
+        static let camera2 = Image("camera2")
+    }
+
+    enum OtherImages {
         static let food1 = Image("food1")
         static let food2 = Image("food2")
-        static let camera2 = Image("camera2")
+        static let avocado = Image("avocado")
+        static let splashBack = Image("splashBack")
+        static let weightCards = Image("weightCards")
     }
 }

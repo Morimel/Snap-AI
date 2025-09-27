@@ -9,51 +9,65 @@ import SwiftUI
 
 //MARK: - GoalStep
 struct GoalStep: View {
+    @State private var path = NavigationPath()
     @ObservedObject var vm: OnboardingViewModel
-    @State private var desiredWeightText = ""
-    @State private var selected: Goal = .lose
+
+    // ✅ инициализируем из VM (или .lose по умолчанию)
+    @State private var selected: Goal
+    @State private var desiredWeightText: String
+
+    init(vm: OnboardingViewModel) {
+        self.vm = vm
+        let initialGoal: Goal = vm.data.goal ?? .lose
+        _selected = State(initialValue: initialGoal)
+
+        // если в VM уже есть желаемый вес — подставим в поле
+        if let w = vm.data.desiredWeight, w > 0 {
+            // без лишних нулей: 72.0 -> "72", 72.5 -> "72.5"
+            _desiredWeightText = State(initialValue: w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w))
+        } else {
+            _desiredWeightText = State(initialValue: "")
+        }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
-            
+
             Text("Goal")
                 .font(.system(size: 24, weight: .regular))
                 .foregroundStyle(AppColors.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
+
             // картинка по полу
             vm.data.genderImage
                 .resizable()
                 .scaledToFit()
                 .frame(height: 220)
-            
-            
+
             HStack(spacing: 6) {
-                goalButton(.lose, title: "Lose weight")
-                goalButton(.gain, title: "Gain weight")
+                goalButton(.lose,     title: "Lose weight")
+                goalButton(.gain,     title: "Gain weight")
                 goalButton(.maintain, title: "Maintain weight")
             }
             .padding([.horizontal, .vertical], 26)
-            
+
             Spacer()
-            
-            // только желаемый вес (юниты из vm.data.unit)
+
+            // желаемый вес (юниты берутся из vm.data.unit)
             UnitTextField(vm: vm,
                           placeholder: "Enter your desired weight",
                           text: $desiredWeightText,
                           kind: .weight)
             .padding(.horizontal, 26)
             .onChange(of: desiredWeightText) { v in
-                vm.data.desiredWeight = v
-                    .replacingOccurrences(of: ",", with: ".")
-                    .doubleValue
+                vm.data.desiredWeight = v.replacingOccurrences(of: ",", with: ".").doubleValue
             }
-            
-            
+
             Spacer()
-            
-            // дальше идём на экран Rate (оценка в App Store)
+
             NavigationLink {
-                RateStep(vm: vm)   // <- твой экран с оценкой приложения
+                RateStep(vm: vm, path: $path)
             } label: {
                 Text("Next")
                     .font(.headline)
@@ -64,8 +78,9 @@ struct GoalStep: View {
             }
             .simultaneousGesture(TapGesture().onEnded { vm.saveDraft() })
             .padding(.horizontal, 26)
-            .padding(.top, 8)
+            .padding(.bottom, 28)
         }
+        .hideKeyboardOnTap()
         .padding(.top, 8)
         .background(AppColors.background.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
@@ -83,12 +98,18 @@ struct GoalStep: View {
                     .padding(.top, 2)
             }
         }
+        .onAppear {
+            // ✅ фиксируем стартовый выбор в VM, чтобы кнопка была «уже нажатой»
+            vm.data.goal = selected
+        }
     }
-    
+
+    // MARK: - UI helpers
+
     @ViewBuilder
     private func goalButton(_ goal: Goal, title: String) -> some View {
-        let selectedState = (selected == goal)
-        
+        let isSelected = (selected == goal)
+
         Button {
             withAnimation(.easeInOut(duration: 0.15)) {
                 selected = goal
@@ -96,16 +117,33 @@ struct GoalStep: View {
             }
         } label: {
             Text(title)
-                .font(.system(size: 14, weight: selectedState ? .semibold : .regular))
-                .foregroundColor(selectedState ? .white : AppColors.primary)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? .white : AppColors.primary)
                 .frame(maxWidth: .infinity, minHeight: 40)
-                .background(selectedState ? AppColors.primary : Color.clear)
+                .background(isSelected ? AppColors.primary : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(AppColors.primary, lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(selectedState ? 0.0 : 0.15), radius: 3, y: 2)
+                .shadow(color: .black.opacity(isSelected ? 0.0 : 0.15), radius: 3, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+#Preview {
+    GoalStepPreview()
+}
+
+private struct GoalStepPreview: View {
+    @StateObject private var vm = OnboardingViewModel(
+        repository: LocalRepository(),
+        onFinished: {}
+    )
+    var body: some View {
+        NavigationStack {
+            GoalStep(vm: vm)
         }
     }
 }

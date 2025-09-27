@@ -12,6 +12,15 @@ struct PlanScreen: View {
     
     var onNext: (() -> Void)? = nil
     
+    @State private var path = NavigationPath()
+    @State private var showChangeTarget = false
+    
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
+    @Environment(\.dismiss) private var dismiss
+    
+    @EnvironmentObject private var paywall: PaywallCenter
+    @State private var showPaywallScreen = false
+    
     let plan: PersonalPlan
     
     let tips: [Tip] = [
@@ -36,89 +45,101 @@ struct PlanScreen: View {
     ]
     
     var body: some View {
-        ScrollView {
-            VStack {
-                AppImages.Other.mark
-                    .resizable()
-                    .frame(width: 68, height: 68)
-                
-                Text("Your personalized plan is\nready!")
-                    .padding()
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(AppColors.primary)
-                    .font(.system(size: 24, weight: .semibold, design: .default))
-                
-                Text("You will maintain \(plan.maintainWeight) \(plan.weightUnit)")
-                    .foregroundStyle(AppColors.primary)
-                    .padding()
-                    .padding(.horizontal, 4)
-                    .frame(height: 40)
-                    .background(
-                        Capsule().fill(.white)     // белый фон
-                    )
-                    .overlay (
-                        Capsule()
-                            .stroke(AppColors.primary.opacity(0.1), lineWidth: 2)
-                            .frame(width: 220, height: 40)
-                    )
-                
-                HStack {
-                    Text("Calorie and macronutrient\nrecommendations")
-                        .foregroundStyle(AppColors.primary)
-                        .font(.system(size: 16, weight: .semibold, design: .default))
+        NavigationStack {
+            
+            ScrollView {
+                VStack {
+                    AppImages.Other.mark
+                        .resizable()
+                        .frame(width: 68, height: 68)
                     
-                    Spacer()
-                    
-                    Button {
-                        print("pen")
-                    } label: {
-                        AppImages.ButtonIcons.Pen.darkPen
-                    }
-                }
-                .padding(.vertical, 32)
-                .padding(.horizontal, 20)
-                
-                HStack(spacing: 16) {
-                    NutrientsCard(value: plan.dailyCalories, title: "Calories", color: AppColors.customRed)
-                    NutrientsCard(value: plan.carbs, title: "Carbohydrates", color: AppColors.customOrange)
-                }
-                .padding(.bottom, 4)
-                
-                HStack(spacing: 16) {
-                    NutrientsCard(value: plan.protein, title: "Proteins", color: AppColors.customBlue)
-                    NutrientsCard(value: plan.fat, title: "Fats", color: AppColors.customGreen)
-                }
-                
-                HStack {
-                    Text("Helpful tips")
-                        .foregroundStyle(AppColors.primary)
-                        .font(.system(size: 16, weight: .semibold, design: .default))
+                    Text("Your personalized plan is\nready!")
                         .padding()
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(AppColors.primary)
+                        .font(.system(size: 24, weight: .semibold, design: .default))
                     
-                    Spacer()
-                }
-                .padding(.top, 32)
-                .padding(.horizontal, 20)
-                
-                
-                HelpfulTipsCard(tips: tips)
+                    Text("You will maintain \(plan.maintainWeight) \(plan.weightUnit)")
+                        .foregroundStyle(AppColors.primary)
+                        .padding()
+                        .padding(.horizontal, 4)
+                        .frame(height: 40)
+                        .background(
+                            Capsule().fill(.white)     // белый фон
+                        )
+                        .overlay (
+                            Capsule()
+                                .stroke(AppColors.primary.opacity(0.1), lineWidth: 2)
+                                .frame(width: 220, height: 40)
+                        )
+                    
+                    HStack {
+                        Text("Calorie and macronutrient\nrecommendations")
+                            .foregroundStyle(AppColors.primary)
+                            .font(.system(size: 16, weight: .semibold, design: .default))
+                        
+                        Spacer()
+                        
+                        Button {
+                            showChangeTarget = true
+                        } label: {
+                            AppImages.ButtonIcons.Pen.darkPen
+                        }
+                    }
+                    .padding(.vertical, 32)
                     .padding(.horizontal, 20)
-                
-                
-                BulletListBox(
-                    title: "The plan is based on scientific research and medical recommendations",
-                    items: sources
-                )
-                .padding()
-                .background(AppColors.background.ignoresSafeArea())
+                    
+                    HStack(spacing: 16) {
+                        NutrientsCard(value: plan.dailyCalories, title: "Calories", color: AppColors.customRed)
+                        NutrientsCard(value: plan.carbs, title: "Carbohydrates", color: AppColors.customOrange)
+                    }
+                    .padding(.bottom, 4)
+                    
+                    HStack(spacing: 16) {
+                        NutrientsCard(value: plan.protein, title: "Proteins", color: AppColors.customBlue)
+                        NutrientsCard(value: plan.fat, title: "Fats", color: AppColors.customGreen)
+                    }
+                    
+                    HStack {
+                        Text("Helpful tips")
+                            .foregroundStyle(AppColors.primary)
+                            .font(.system(size: 16, weight: .semibold, design: .default))
+                            .padding()
+                        
+                        Spacer()
+                    }
+                    .padding(.top, 32)
+                    .padding(.horizontal, 20)
+                    
+                    
+                    HelpfulTipsCard(tips: tips)
+                        .padding(.horizontal, 20)
+                    
+                    
+                    BulletListBox(
+                        title: "The plan is based on scientific research and medical recommendations",
+                        items: sources
+                    )
+                    .padding()
+                    .background(AppColors.background.ignoresSafeArea())
+                }
             }
-        }
-        .background(AppColors.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom) {
-            StickyCTA(title: "Next") {
-                onNext?()   // действие по кнопке
+            .background(AppColors.background.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) {
+                StickyCTA(title: "Next") {
+                    hasOnboarded = true          // выходим из онбординга
+                    paywall.presentInitial()     // глобально показать paywall (с крестиком)
+                }
             }
+            .navigationDestination(isPresented: $showChangeTarget) {
+                            ChangeTargetView()
+                        }
+            
         }
+        // как только онбординг завершён — закрываем себя (fullScreenCover от RateStep)
+                .onChange(of: hasOnboarded) { new in
+                    if new { dismiss() }
+                }
     }
 }
 

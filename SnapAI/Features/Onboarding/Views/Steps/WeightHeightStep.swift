@@ -8,11 +8,29 @@
 import SwiftUI
 
 //MARK: - WeightHeightStep
+import SwiftUI
+
+//MARK: - WeightHeightStep
 struct WeightHeightStep: View {
     @ObservedObject var vm: OnboardingViewModel
+
+    enum Mode {
+        case onboarding
+        case picker(onSelect: (_ _heightDisplay: String,  _ _weightDisplay: String) -> Void)
+    }
+    var mode: Mode = .onboarding
+
+    @Environment(\.dismiss) private var dismiss
+
     @State private var weightText = ""
     @State private var heightText = ""
-    @State private var unit: UnitSystem = .imperial
+    @State private var didBootstrap = false
+
+    init(vm: OnboardingViewModel, mode: Mode = .onboarding) {
+        self.vm = vm
+        self.mode = mode
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Text("Weight and Height")
@@ -20,69 +38,162 @@ struct WeightHeightStep: View {
                 .foregroundStyle(AppColors.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
-            
+
             Spacer()
-            
+
             BubbleSegmentedControl(vm: vm, height: 48)
                 .padding(.horizontal, 26)
-            
-            
+
             Text("Weight")
                 .font(.system(size: 24, weight: .regular))
                 .foregroundStyle(AppColors.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
-            
+
             UnitTextField(vm: vm, placeholder: "Your weight", text: $weightText, kind: .weight)
-            
                 .padding(.horizontal, 26)
-            
-            
-            
-            
+
             Text("Height")
                 .font(.system(size: 24, weight: .regular))
                 .foregroundStyle(AppColors.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
-            
+
             UnitTextField(vm: vm, placeholder: "Your height", text: $heightText, kind: .height)
-            
                 .padding(.horizontal, 26)
-            
+
             Spacer()
-            
-            NavigationLink(destination: DateOfBirthStep(vm: vm)) {
-                Text("Next")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 60)
-                    .foregroundColor(.white)
-                    .background(AppColors.secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-            }
-            .padding(.horizontal, 26)
-            .padding(.bottom, 28)
-            .onAppear {
-                vm.data.weight = Double(weightText)
-                vm.data.height = Double(heightText)
+
+            if case .onboarding = mode {
+                NavigationLink(destination: DateOfBirthStep(vm: vm)) {
+                    Text("Next")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .foregroundColor(.white)
+                        .background(AppColors.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+                .padding(.horizontal, 26)
+                .padding(.bottom, 28)
+            } else if case let .picker(onSelect) = mode {
+                Button {
+                    let w = Double(weightText.replacingOccurrences(of: ",", with: "."))  // кг или lbs — зависит от vm.data.unit
+                    let h = Double(heightText.replacingOccurrences(of: ",", with: "."))  // см или дюймы — зависит от vm.data.unit
+                    vm.data.weight = w
+                    vm.data.height = h
+
+                    let weightDisplay = formatWeight(w, unit: vm.data.unit)
+                    let heightDisplay = formatHeight(h, unit: vm.data.unit)
+
+                    onSelect(heightDisplay, weightDisplay)
+                    dismiss()
+                } label: {
+                    Text("Choose")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .foregroundColor(.white)
+                        .background(AppColors.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+                .padding(.horizontal, 26)
+                .padding(.bottom, 28)
             }
         }
+        .hideKeyboardOnTap()
         .padding()
         .background(AppColors.background.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) { BackButton() }
             ToolbarItem(placement: .principal) {
-                ProgressView(value: 2, total: 5)
-                    .progressViewStyle(
-                        ThickLinearProgressViewStyle(
-                            height: 10, cornerRadius: 7,
-                            fillColor: AppColors.primary, trackColor: AppColors.secondary
+                switch mode {
+                case .onboarding:
+                    ProgressView(value: 2, total: 5)
+                        .progressViewStyle(
+                            ThickLinearProgressViewStyle(
+                                height: 10, cornerRadius: 7,
+                                fillColor: AppColors.primary, trackColor: AppColors.secondary
+                            )
                         )
-                    )
-                    .frame(width: UIScreen.main.bounds.width * 0.6, height: 10)
-                    .padding(.top, 2)
+                        .frame(width: UIScreen.main.bounds.width * 0.6, height: 10)
+                        .padding(.top, 2)
+
+                case .picker:
+                    Text("Weight & Height")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(AppColors.primary)
+                }
             }
+        }
+        .task {
+            guard !didBootstrap else { return }
+            didBootstrap = true
+
+            if vm.data.unit != .imperial {
+                vm.data.unit = .imperial
+            }
+            if let w = vm.data.weight {
+                weightText = String(format: "%.0f", w)
+            }
+            if let h = vm.data.height {
+                heightText = String(format: "%.0f", h)
+            }
+        }
+        .onChange(of: weightText) { s in
+            let sanitized = s.replacingOccurrences(of: ",", with: ".")
+            let newVal = Double(sanitized)
+            if vm.data.weight != newVal {
+                vm.data.weight = newVal
+            }
+        }
+        .onChange(of: heightText) { s in
+            let sanitized = s.replacingOccurrences(of: ",", with: ".")
+            let newVal = Double(sanitized)
+            if vm.data.height != newVal {
+                vm.data.height = newVal
+            }
+        }
+    }
+
+    // MARK: - Formatting helpers
+
+    private func formatWeight(_ w: Double?, unit: UnitSystem) -> String {
+        guard let w else { return "—" }
+        switch unit {
+        case .imperial: return "\(Int(round(w))) lbs"
+        case .metric:   return "\(Int(round(w))) kg"
+        }
+    }
+
+    private func formatHeight(_ h: Double?, unit: UnitSystem) -> String {
+        guard let h else { return "—" }
+        switch unit {
+        case .imperial:
+            // считаем, что h — в дюймах; если в твоей модели иначе — подкорректируй
+            let inches = Int(round(h))
+            let ft = inches / 12
+            let inch = inches % 12
+            return "\(ft)'\(inch)\""
+        case .metric:
+            // считаем, что h — в сантиметрах
+            return "\(Int(round(h))) cm"
+        }
+    }
+}
+
+
+#Preview {
+    WeightHeightStepPreview()
+}
+
+private struct WeightHeightStepPreview: View {
+    @StateObject private var vm = OnboardingViewModel(
+        repository: LocalRepository(),
+        onFinished: {}
+    )
+    var body: some View {
+        NavigationStack {
+            WeightHeightStep(vm: vm)
         }
     }
 }

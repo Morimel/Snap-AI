@@ -8,10 +8,22 @@
 import SwiftUI
 
 //MARK: - LifestyleStep
+import SwiftUI
+
 struct LifestyleStep: View {
     @ObservedObject var vm: OnboardingViewModel
-    @State private var selected: Lifestyle = .sedentary
-    @State private var currentImage = AppImages.Activity.sedantary
+
+    @State private var selected: Lifestyle
+    @State private var currentImage: Image
+
+    // Стартуем с того, что уже в VM (или .sedentary по умолчанию)
+    init(vm: OnboardingViewModel) {
+        self.vm = vm
+        let initial: Lifestyle = vm.data.lifestyle ?? .sedentary   // если не опционал, оставь: vm.data.lifestyle
+        _selected     = State(initialValue: initial)
+        _currentImage = State(initialValue: LifestyleStep.image(for: initial))
+    }
+
     var body: some View {
         VStack {
             Text("Activity")
@@ -19,24 +31,24 @@ struct LifestyleStep: View {
                 .foregroundStyle(AppColors.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
-            
+
             Spacer()
-            
+
             currentImage
                 .resizable()
                 .scaledToFit()
                 .frame(height: 220)
                 .padding(.vertical)
-            
+
             VStack(spacing: 16) {
                 lifeStyleButton(.sedentary, title: "Sedentary lifestyle")
-                lifeStyleButton(.normal, title: "Normal lifestyle")
-                lifeStyleButton(.active, title: "Active lifestyle")
+                lifeStyleButton(.normal,     title: "Normal lifestyle")
+                lifeStyleButton(.active,     title: "Active lifestyle")
             }
             .padding([.horizontal, .vertical], 26)
-            
+
             Spacer()
-            
+
             NavigationLink(destination: GoalStep(vm: vm)) {
                 Text("Next")
                     .font(.headline)
@@ -65,34 +77,59 @@ struct LifestyleStep: View {
                     .padding(.top, 2)
             }
         }
+        .onAppear { vm.data.lifestyle = selected } // фиксируем выбор в модели
     }
-    
+
+    // MARK: - UI
+
     @ViewBuilder
     private func lifeStyleButton(_ lifeStyle: Lifestyle, title: String) -> some View {
-        let selectedState = (selected == lifeStyle)
-        
+        let isSelected = (selected == lifeStyle)
+
         Button {
             withAnimation(.easeInOut(duration: 0.15)) {
                 selected = lifeStyle
                 vm.data.lifestyle = lifeStyle
-                switch lifeStyle {
-                case .sedentary: currentImage = AppImages.Activity.sedantary
-                case .normal: currentImage = AppImages.Activity.normal
-                case .active:  currentImage = AppImages.Activity.active
-                }
+                currentImage = LifestyleStep.image(for: lifeStyle)
             }
         } label: {
             Text(title)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundColor(selectedState ? .white : AppColors.text)
+                .foregroundColor(isSelected ? .white : AppColors.text)
                 .frame(maxWidth: .infinity, minHeight: 60)
-                .background(selectedState ? AppColors.secondary : Color.clear)
+                .background(isSelected ? AppColors.secondary : .clear)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(AppColors.secondary, lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(selectedState ? 0.0 : 0.15), radius: 3, y: 2)
+                .shadow(color: .black.opacity(isSelected ? 0 : 0.15), radius: 3, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private static func image(for lifestyle: Lifestyle) -> Image {
+        switch lifestyle {
+        case .sedentary: return AppImages.Activity.sedantary   // ← как у тебя назван ассет
+        case .normal:    return AppImages.Activity.normal
+        case .active:    return AppImages.Activity.active
+        }
+    }
+}
+
+#Preview {
+    LifestyleStepPreview()
+}
+
+
+private struct LifestyleStepPreview: View {
+    @StateObject private var vm = OnboardingViewModel(
+        repository: LocalRepository(),
+        onFinished: {}
+    )
+    var body: some View {
+        NavigationStack {
+            LifestyleStep(vm: vm)
         }
     }
 }

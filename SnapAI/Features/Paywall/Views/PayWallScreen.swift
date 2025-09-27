@@ -10,7 +10,16 @@ import SwiftUI
 // MARK: - PayWallScreen
 struct PayWallScreen: View {
     
-    @Environment(\.dismiss) private var dismiss
+    var mode: PaywallMode
+    var onStartTrial: () -> Void     // используется и для ✕, и для "Start for free"
+    var onProceed: () -> Void        // "Pay"
+    
+    // ↑ добавим настройки
+    private let imageYOffset: CGFloat = 124   // минус = выше картинка
+    private let sheetYOffset: CGFloat = -12    // плюс = ниже нижний блок
+    private let extraImageHeight: CGFloat = 200 // запас высоты, чтобы картинка не
+    private let topRatio: CGFloat = 0.65
+    private let bottomRatio: CGFloat = 0.35
     
     let features: [Features] = [
         .init(image: AppImages.Other.camera2,   title: "Food recognition by photo"),
@@ -19,10 +28,6 @@ struct PayWallScreen: View {
         .init(image: AppImages.Other.statistic,  title: "Weight tracking")
     ]
     @State private var selected: Product = .annual
-    
-    // коэффициенты: верх 60%, низ 40%
-    private let topRatio: CGFloat = 0.60
-    private let bottomRatio: CGFloat = 0.40
     
     var body: some View {
         GeometryReader { geo in
@@ -37,11 +42,11 @@ struct PayWallScreen: View {
                 
                 VStack(spacing: 0) {
                     // ===== Верхний блок (60%) =====
-                    ZStack(alignment: .top) {
-                        AppImages.Other.food2
+                    ZStack(alignment: .center) {
+                        AppImages.OtherImages.food2
                             .resizable()
                             .scaledToFill()
-                            .frame(width: geo.size.width, height: topH + 170)
+                            .frame(width: geo.size.width, height: topH + 248)
                             .clipped()
                             .overlay(
                                 LinearGradient(
@@ -49,7 +54,7 @@ struct PayWallScreen: View {
                                     startPoint: .top, endPoint: .center
                                 )
                             )
-                            .offset(y: 76)
+                            .offset(y: imageYOffset)
                         
                         VStack(spacing: 12) {
                             Text("Snap AI PRO")
@@ -65,7 +70,6 @@ struct PayWallScreen: View {
                                 .padding(.top, 4)
                         }
                         .padding(.horizontal, 20)
-                        .padding(.top, 170)
                         .frame(maxWidth: .infinity, alignment: .top)
                     }
                     .frame(height: topH)
@@ -77,33 +81,64 @@ struct PayWallScreen: View {
                             .clipShape(RoundedCorners(corners: [.topLeft, .topRight], radius: 28))
                             .shadow(color: .black.opacity(0.08), radius: 12, y: 0)
                         
-                        PayWallSheet(selected: $selected) {
-                            print("Start for free with: \(selected)")
+                        PayWallSheet(
+                            selected: $selected,
+                            ctaTitle: mode.ctaTitle
+                        ) {
+                            if mode == .trialOffer {
+                                onStartTrial()   // Start for free → запустить минутный таймер и закрыть
+                            } else {
+                                onProceed()      // Pay → заглушка оплаты (hasPayed = true)
+                            }
                         }
-                        .padding(.bottom, 20)
+                        
+                        // Текст trial — только в режиме trialOffer
+                        if mode.showsTrialTerms {
+                            Text("*7-day free trial, then $19.99/month")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 2)
+                        }
                     }
-                    
-                    .offset(y: -10) // перекрыть шов на стыке
-                    .frame(height: bottomH + 90)
-                    //                    .ignoresSafeArea(edges: .bottom)
+                    .offset(y: sheetYOffset)        // ← ОПУСТИЛИ «зелёную» часть
+                    .frame(height: bottomH)
                 }
             }
-            .ignoresSafeArea(edges: .top)   // ← чтобы картинка залезла под навбар
         }
+        .ignoresSafeArea()
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
+            if mode.showsClose {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: onStartTrial) {          // ✕ делает то же самое, что "Start for free"
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .background(.black.opacity(0.35))
+                    .clipShape(Circle())
                 }
-                .foregroundColor(.white)
-                .background(.black.opacity(0.35))
-                .clipShape(Circle())
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)   // ⬅️ скрыли фон навбара
         .toolbarColorScheme(.dark, for: .navigationBar)    // светлые элементы
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+    }
+}
+
+#Preview {
+    PaywallPreview()
+}
+
+private struct PaywallPreview: View {
+    @State private var path = NavigationPath()
+    var body: some View {
+        NavigationStack(path: $path) {
+            PayWallScreen(
+                mode: .trialOffer,
+                onStartTrial: {},
+                onProceed: {}
+            )
+        }
     }
 }

@@ -11,7 +11,7 @@ import SwiftUI
 struct LabeledPillRow: View {
     let label: String
     let value: String
-    let action: () -> Void
+    var action: (() -> Void)? = nil   // ⬅️ стало опциональным
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,25 +20,27 @@ struct LabeledPillRow: View {
                 .foregroundColor(AppColors.primary)
                 .padding(.horizontal, 16)
 
-            Button(action: action) {
-                HStack {
-                    Text(value)
-                        .foregroundColor(AppColors.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(AppColors.secondary)
-                }
-                .padding(.horizontal, 14)
-                .frame(height: 46)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: .black.opacity(0.06), radius: 6, y: 1)
-                )
+            let rowContent = HStack {
+                Text(value).foregroundColor(AppColors.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(AppColors.secondary)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .frame(height: 46)
+            .background(
+                Capsule(style: .continuous).fill(Color(.white))
+            )
+            .shadow(color: .black.opacity(0.06), radius: 6, y: 1)
             .padding(.horizontal, 16)
             .padding(.bottom, 6)
+
+            if let action {
+                Button(action: action) { rowContent }
+                    .buttonStyle(.plain)
+            } else {
+                rowContent   // ⬅️ без кнопки
+            }
         }
         .padding(.vertical, 2)
     }

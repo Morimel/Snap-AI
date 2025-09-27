@@ -20,13 +20,16 @@ struct WheelPicker<ItemView: View>: View {
     var pillHorizontalInset: CGFloat = 16
     var tiltDegrees: Double = 40
     
+    @State private var isSnapping = false
     @State private var containerMidY: CGFloat = .zero
     @State private var isDragging = false
     @State private var pendingIndex: Int? = nil     // 👈 сюда складываем ближайший индекс во время скролла
     
+    @State private var isReady = false            // ← центр измерен
+    @State private var didInitialAlign = false    // ← первое центрирование выполнено
+    
     private var rowsAbove: Int { (visibleRows - 1) / 2 }
     private var topBottomInset: CGFloat { CGFloat(rowsAbove) * itemHeight }
-    
     private let wheelSpace = "wheelSpace" // 👈
     
     var body: some View {
@@ -62,45 +65,54 @@ struct WheelPicker<ItemView: View>: View {
                 .background(
                     GeometryReader { geo in
                         Color.clear
-                            .onAppear { containerMidY = geo.frame(in: .named(wheelSpace)).midY }
-                            .onChange(of: geo.frame(in: .named(wheelSpace)).midY) { containerMidY = $0 }
+                            .onAppear {
+                                containerMidY = geo.frame(in: .named(wheelSpace)).midY
+                                isReady = containerMidY > 0
+                            }
+                            .onChange(of: geo.frame(in: .named(wheelSpace)).midY) { mid in
+                                containerMidY = mid
+                                isReady = mid > 0
+                                // первое центрирование — только когда всё измерено
+                                if isReady && !didInitialAlign {
+                                    didInitialAlign = true
+                                    //                                                    DispatchQueue.main.async {
+                                    //                                                        proxy.scrollTo(selectedIndex, anchor: .center)
+                                    //                                                    }
+                                }
+                            }
                     }
                 )
                 .coordinateSpace(name: wheelSpace)
                 .gesture(
                     DragGesture()
-                        .onChanged { _ in
-                            if !isDragging { isDragging = true }
-                        }
+                        .onChanged { _ in if !isDragging { isDragging = true } }
                         .onEnded { _ in
                             isDragging = false
                             let target = pendingIndex ?? selectedIndex
                             pendingIndex = nil
                             if target != selectedIndex { selectedIndex = target }
-                            
-                            // ✅ haptic feedback
                             let gen = UIImpactFeedbackGenerator(style: .light)
                             gen.impactOccurred()
-                            
+                            isSnapping = true
                             withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(target, anchor: .center)
                             }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                isSnapping = false
+                            }
                         }
                 )
-                .onAppear {
-                    proxy.scrollTo(selectedIndex, anchor: .center)
-                }
                 .onChange(of: selectedIndex) { new in
-                    guard !isDragging else { return }
+                    guard !isDragging && !isSnapping && isReady else { return }
                     withAnimation(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(new, anchor: .center)
                     }
                 }
                 .onPreferenceChange(RowDistanceKey.self) { distances in
-                    guard !distances.isEmpty else { return }
+                    guard !isSnapping else { return }
+                    guard isReady, !distances.isEmpty else { return }
                     if let nearest = distances.min(by: { $0.value < $1.value })?.key {
                         if isDragging {
-                            // во время скролла просто запоминаем — не дёргаем прокрутку
                             pendingIndex = nearest
                         } else if nearest != selectedIndex {
                             selectedIndex = nearest

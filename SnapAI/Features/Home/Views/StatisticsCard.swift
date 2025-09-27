@@ -21,52 +21,52 @@ struct StatisticsCard: View {
             ZStack {
                 Circle()
                     .stroke(lineWidth: 10)
-                    .frame(width: 150, height: 150)
+                    .frame(width: 110, height: 110)
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.white, .black.opacity(0.6)]), startPoint: .top, endPoint: .bottomLeading))
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
                     .trim(from: 0, to: 0.5)
                     .stroke(lineWidth: 10)
-                    .frame(width: 150, height: 150)
+                    .frame(width: 110, height: 110)
                     .rotationEffect(.degrees(-90))
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [AppColors.customBlue]), startPoint: .top, endPoint: .bottomLeading))
                 
                 Circle()
-                    .stroke(lineWidth: 10)
-                    .frame(width: 196, height: 196)
+                    .stroke(lineWidth: 8)
+                    .frame(width: 156, height: 156)
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.white, .black.opacity(0.6)]), startPoint: .top, endPoint: .bottomLeading))
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
                     .trim(from: 0, to: 0.5)
-                    .stroke(lineWidth: 10)
-                    .frame(width: 196, height: 196)
+                    .stroke(lineWidth: 8)
+                    .frame(width: 156, height: 156)
                     .rotationEffect(.degrees(-90))
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [AppColors.customOrange]), startPoint: .top, endPoint: .bottomLeading))
                 
                 
                 Circle()
-                    .stroke(lineWidth: 14)
-                    .frame(width: 240, height: 240)
+                    .stroke(lineWidth: 12)
+                    .frame(width: 200, height: 200)
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.white, .black.opacity(0.6)]), startPoint: .top, endPoint: .bottomLeading))
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
                     .trim(from: 0, to: 0.6)
-                    .stroke(lineWidth: 14)
-                    .frame(width: 240, height: 240)
+                    .stroke(lineWidth: 12)
+                    .frame(width: 200, height: 200)
                     .rotationEffect(.degrees(-90))
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [AppColors.customGreen]), startPoint: .top, endPoint: .bottomLeading))
                 
                 VStack {
                     Text("\(kcal)")
                         .foregroundStyle(AppColors.primary)
-                        .font(.system(size: 28, weight: .bold, design: .default))
+                        .font(.system(size: 24, weight: .bold, design: .default))
                     
                     Text("kcal")
                         .foregroundStyle(AppColors.primary)
-                        .font(.system(size: 14, weight: .regular, design: .default))
+                        .font(.system(size: 12, weight: .regular, design: .default))
                 }
             }
             .padding(.top, 20)
@@ -100,7 +100,7 @@ struct StatisticsCard: View {
                 fat:     (56,  88),
                 carb:    (150, 220)
             )
-            .padding()
+            .padding(.horizontal)
         }
         .background(
             RoundedRectangle(cornerRadius: 22)

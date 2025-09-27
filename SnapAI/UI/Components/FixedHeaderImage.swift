@@ -9,7 +9,7 @@ import SwiftUI
 
 struct FixedHeaderImage: View {
     let image: UIImage
-    static let height: CGFloat = 260
+    static let height: CGFloat = 380
 
     var body: some View {
         ZStack {                // фон, если картинка уже узкая/высокая
@@ -22,6 +22,5 @@ struct FixedHeaderImage: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: Self.height)
-        .clipped()
     }
 }

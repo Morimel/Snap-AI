@@ -9,12 +9,16 @@ import SwiftUI
 
 // MARK: - Personal Data Screen
 struct PersonalDataView: View {
+    @ObservedObject var vm: OnboardingViewModel
     @Binding var gender: String
-    @Binding var age: String        // формат: "27 years old"
-    @Binding var height: String     // формат: 5'9"
-    @Binding var weight: String     // формат: "175 lbs"
-
+    @Binding var age: String
+    @Binding var height: String
+    @Binding var weight: String
+    
+    @Environment(\.dismiss) private var dismiss   // 👈 добавили
+    
     @State private var activeEditor: Editor?
+    @State private var goGenderPicker = false
 
     enum Editor: Identifiable {
         case gender, age, height, weight
@@ -33,38 +37,94 @@ struct PersonalDataView: View {
         ScrollView {
             VStack(spacing: 20) {
                 SectionCard {
-                    LabeledPillRow(label: "Gender", value: gender) {
-                        activeEditor = .gender
+                    NavigationLink {
+                            GenderStep(
+                                vm: vm,
+                                mode: .picker { g in
+                                    gender = g.displayName
+                                    vm.data.gender = g
+                                }
+                            )
+                        } label: {
+                            LabeledPillRow(label: "Gender", value: gender)   // ⬅️ без action
+                        }
+                    // ⬇️ Age -> DateOfBirthStep
+                    NavigationLink {
+                        DateOfBirthStep(
+                            vm: vm,
+                            mode: .picker { ageString in
+                                age = ageString
+                                // при желании: vm.data.ageYears = ...
+                            }
+                        )
+                        .navigationTitle("Date of birth")
+                        .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        LabeledPillRow(label: "Age", value: age)
                     }
-                    LabeledPillRow(label: "Age", value: age) {
-                        activeEditor = .age
+
+
+                       // ⬇️ Height -> WeightHeightStep
+                    // ⬇️ объединённая строка
+                    NavigationLink {
+                        WeightHeightStep(
+                            vm: vm,
+                            mode: .picker { heightDisplay, weightDisplay in
+                                height = heightDisplay
+                                weight = weightDisplay
+                            }
+                        )
+                        .navigationTitle("Weight & Height")
+                        .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        LabeledPillRow(label: "Height & Weight", value: "\(height) • \(weight)")
                     }
-                    LabeledPillRow(label: "Height", value: height) {
-                        activeEditor = .height
-                    }
-                    LabeledPillRow(label: "Weight", value: weight) {
-                        activeEditor = .weight
-                    }
+
                 }
                 .padding(.top, 8)
             }
             .padding(.vertical, 12)
         }
-        .background(AppColors.background.ignoresSafeArea())
-        .navigationTitle("Personal data")
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $activeEditor) { editor in
-            switch editor {
-            case .gender:
-                GenderPickerSheet(value: $gender)
-            case .age:
-                AgePickerSheet(value: $age)
-            case .height:
-                HeightPickerSheet(value: $height)
-            case .weight:
-                WeightPickerSheet(value: $weight)
+        .hideKeyboardOnTap()
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            // ЛЕВАЯ КНОПКА НАЗАД
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { dismiss() }) {    // 👈 pop текущего экрана
+                    AppImages.ButtonIcons.arrowRight
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 12, height: 12)
+                        .rotationEffect(.degrees(180))
+                        .padding(12)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            
+            // ЗАГОЛОВОК ПО ЦЕНТРУ
+            ToolbarItem(placement: .principal) {
+                Text("Change target")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(AppColors.primary)
             }
         }
+        .background(AppColors.background.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+#Preview {
+    NavigationStack {
+        let vm = OnboardingViewModel(repository: LocalRepository(), onFinished: {})
+        PersonalDataView(
+            vm: vm,
+            gender: .constant("Female"),
+            age:    .constant("27 years old"),
+            height: .constant("5'9\""),
+            weight: .constant("175 lbs")
+        )
+    }
+}
+
 

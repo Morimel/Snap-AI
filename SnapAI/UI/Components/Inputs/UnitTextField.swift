@@ -26,9 +26,14 @@ struct UnitTextField: View {
     
     var body: some View {
         HStack {
-            TextField(placeholder, text: $text)
-                .keyboardType(.decimalPad)
-                .foregroundColor(AppColors.text)
+            TextField(
+                "", text: $text,
+                prompt: styledPlaceholder(placeholder, color: AppColors.primary.opacity(0.35)) // цвет плейсхолдера
+            )
+            .keyboardType(.decimalPad)
+            .foregroundStyle(AppColors.primary)                    // цвет ВВЕДЁННОГО текста
+            .textInputAutocapitalization(.never)
+            .disableAutocorrection(true)
             
             Text(unit)
                 .font(.system(size: 16, weight: .semibold))
@@ -42,7 +47,7 @@ struct UnitTextField: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(Color.black.opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+        .shadow(color: .black.opacity(0.2), radius: 8, y: 2)
         // необязательная фильтрация: оставляем только цифры/точку/запятую
         .onChange(of: text) { v in
             let filtered = v.filter { "0123456789.,".contains($0) }
@@ -50,4 +55,25 @@ struct UnitTextField: View {
         }
     }
 }
+
+
+func styledPlaceholder(_ text: String, color: Color) -> Text {
+    if #available(iOS 17, *) {
+        return Text(text).foregroundStyle(color)
+    } else {
+        return Text(text).foregroundColor(color)
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func fgCompat(_ color: Color) -> some View {
+        if #available(iOS 17, *) {
+            self.foregroundStyle(color)
+        } else {
+            self.foregroundColor(color)
+        }
+    }
+}
+
 

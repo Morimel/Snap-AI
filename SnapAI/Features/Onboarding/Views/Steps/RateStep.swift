@@ -10,15 +10,20 @@ import StoreKit
 
 //MARK: - RateStep
 struct RateStep: View {
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
     @ObservedObject var vm: OnboardingViewModel
+    @Binding var path: NavigationPath          // ← добавили
+    
     @State private var currentRating = 0
     @State private var showFeedbackForm = false
     @State private var showSubmitting = false
     @State private var showPlan = false           // 👈 добавили
     @State private var showError = false          // 👈 добавили
     @State private var errorMsg = ""              // 👈 добавили
+    @State private var pendingReviewLaunch = false  // ← флаг ожидания возврата из App Store
     
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase  // ← чтобы ловить возврат из App Store
     private let appID = "1234567890" // TODO: реальный
     
     var body: some View {
@@ -50,8 +55,21 @@ struct RateStep: View {
                 showSubmitting = false
                 errorMsg = msg
                 showError = true
-            default:
-                break
+            default: break
+            }
+        }
+        // Возврат из App Store → стартуем сабмит
+        .onChange(of: scenePhase) { phase in
+            if phase == .active, pendingReviewLaunch {
+                pendingReviewLaunch = false
+                startSubmitting()
+            }
+        }
+        // Если вдруг флаг онбординга переключился — закроем покрытия
+        .onChange(of: hasOnboarded) { new in
+            if new {
+                showPlan = false
+                showSubmitting = false
             }
         }
         .alert("Ошибка", isPresented: $showError) {
@@ -76,7 +94,24 @@ struct RateStep: View {
             Spacer()
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 20) {
-                    ReviewCards(); ReviewCards(); ReviewCards()
+                    ReviewCard(
+                        avatarName: "review1",
+                        author: "Michael Brooks",
+                        text: "I was shocked! I just snapped a\nphoto of my food, and Snap AI\ninstantly counted the calories!",
+                        rating: 5
+                    )
+                    ReviewCard(
+                        avatarName: "review2",
+                        author: "Sophia Carter",
+                        text: "I always thought counting\ncalories was hard. But here, I\njust snapped a photo — and it\nwas all done!",
+                        rating: 5
+                    )
+                    ReviewCard(
+                        avatarName: "review3",
+                        author: "Daniel Reed",
+                        text: "A photo of food and instantly\nthe calories? I had no idea\ntechnology could be this\nconvenient!",
+                        rating: 4
+                    )
                     Spacer(minLength: 16)
                 }
             }
@@ -97,7 +132,11 @@ struct RateStep: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: proceedNext) { BackButton() }
+                Button {
+                    startSubmitting()
+                } label: {
+                    BackButton()
+                }
             }
             ToolbarItem(placement: .principal) {
                 Text("Rate Us")
@@ -109,32 +148,10 @@ struct RateStep: View {
         .sheet(isPresented: $showFeedbackForm) {
             FeedbackSheet(
                 rating: currentRating,
-                onSend: { _ in proceedNext() },
-                onSkip: { proceedNext() }
+                onSend: { _ in startSubmitting() },   // ← сюда
+                onSkip: { startSubmitting() }         // ← и сюда
             )
         }
-    }
-    
-    private func rateAndProceed() {
-        if currentRating >= 4 {
-            if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
-                openURL(url)
-            } else {
-                requestStoreReview()
-            }
-            // без ожидания колбэков → идём дальше
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                proceedNext()
-            }
-        } else {
-            showFeedbackForm = true
-        }
-    }
-    
-    private func proceedNext() {
-        // показываем крутилку и стартуем финализацию
-        showSubmitting = true
-        vm.phase = .submitting
     }
     
     private func requestStoreReview() {
@@ -143,4 +160,35 @@ struct RateStep: View {
             SKStoreReviewController.requestReview(in: scene)
         }
     }
+    
+    private func startSubmitting() {
+        guard !showSubmitting else { return }
+        showSubmitting = true
+        vm.phase = .submitting
+    }
+    
+    
+    private func rateAndProceed() {
+        if currentRating >= 4 {
+            pendingReviewLaunch = true
+            if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
+                openURL(url)
+            } else {
+                requestStoreReview()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
+            }
+        } else {
+            showFeedbackForm = true
+        }
+    }
 }
+
+#Preview {
+    NavigationStack {
+        RateStep(
+            vm: OnboardingViewModel(repository: LocalRepository(), onFinished: {}),
+            path: .constant(NavigationPath())
+        )
+    }
+}
+

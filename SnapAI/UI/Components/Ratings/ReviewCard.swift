@@ -7,21 +7,28 @@
 
 import SwiftUI
 
-//MARK: - ReviewCards
-struct ReviewCards: View {
+//MARK: - ReviewCard
+struct ReviewCard: View {
+    
+    let avatarName: String
+    let author: String
+    let text: String
+    let rating: Int
+    
     var body: some View {
         VStack {
             HStack {
-                Image("review1")
+                Image(avatarName)
                     .resizable()
                     .frame(width: 60, height: 60)
                     .padding(.vertical, 24)
                 
-                Text("Michael Brooks")
+                Text(author)
                     .font(.system(size: 12, weight: .medium))
             }
             
-            Text("I was shocked! I just snapped a\nphoto of my food, and Snap AI\ninstantly counted the calories!")
+            Text(text)
+                .foregroundStyle(.black)
                 .font(.system(size: 12, weight: .regular))
                 .padding()
                 .lineLimit(nil)

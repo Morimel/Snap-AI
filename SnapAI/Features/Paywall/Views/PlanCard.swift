@@ -27,13 +27,12 @@ struct PlanCard: View {
                 Text(product.period)
                     .font(.system(size: 13))
                     .foregroundStyle(AppColors.primary.opacity(0.7))
-                
                 if let badge = product.badge {
                     Text(badge.text)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(badge.foreground)
+                        .foregroundColor(isSelected ? badge.foreground2 : badge.foreground1)
                         .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(badge.background)
+                        .background(isSelected ? badge.background2 : badge.background1)
                         .clipShape(Capsule())
                         .padding(.top, 6)
                 }
@@ -50,4 +49,8 @@ struct PlanCard: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+#Preview {
+    PlanCard(product: .monthly, isSelected: false, tap: { })
 }

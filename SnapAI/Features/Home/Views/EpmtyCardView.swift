@@ -15,14 +15,15 @@ struct EpmtyCardView: View {
                 Text("Nothing here yet!")
                     .foregroundStyle(AppColors.primary)
                     .font(.system(size: 16, weight: .bold))
-                    .padding(.vertical)
+                    .padding(.vertical, 12)
                 
                 Text("Add something delicious\nand treat yourself to a new\ndish!")
                     .foregroundStyle(AppColors.primary)
                     .font(.system(size: 14, weight: .medium))
             }
             
-            .padding()
+            .padding(.horizontal)
+            .padding(.vertical, 12)
             
             AppImages.Other.plateApple
                 .resizable()
