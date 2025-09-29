@@ -97,7 +97,8 @@ struct LifestyleStep: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(isSelected ? .white : AppColors.text)
                 .frame(maxWidth: .infinity, minHeight: 60)
-                .background(isSelected ? AppColors.secondary : .clear)
+//                .background(isSelected ? AppColors.secondary : .clear)
+                .background(isSelected ? AppColors.secondary : Color.white.opacity(0.001))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -106,7 +107,9 @@ struct LifestyleStep: View {
                 .shadow(color: .black.opacity(isSelected ? 0 : 0.15), radius: 3, y: 2)
         }
         .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 12))   // ← ВЕСЬ блок теперь тапаемый
     }
+
 
     private static func image(for lifestyle: Lifestyle) -> Image {
         switch lifestyle {

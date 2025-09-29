@@ -44,3 +44,5 @@ struct OnboardingData: Codable {
     var rating: Int?             // из экрана Rate
 }
 
+
+

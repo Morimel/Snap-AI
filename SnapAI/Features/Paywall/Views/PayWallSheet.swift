@@ -11,6 +11,7 @@ struct PayWallSheet: View {
     @Binding var selected: Product
     var ctaTitle: String
     var onStart: () -> Void
+    var mode: PaywallMode
 
     var body: some View {
         VStack(spacing: 14) {
@@ -26,11 +27,13 @@ struct PayWallSheet: View {
                 PlanCard(product: .annual,  isSelected: selected == .annual)  { selected = .annual  }
             }
             .padding(.horizontal, 16)
-
-            Text("*7-day free trial, then $19.99/month")
-                .font(.system(size: 12))
-                .foregroundStyle(AppColors.primary.opacity(0.7))
-                .padding(.top, 2)
+            
+            if mode.showsTrialTerms {
+                Text("*7-day free trial, then $19.99/month")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppColors.primary.opacity(0.7))
+                    .padding(.top, 2)
+            }
 
             Button(action: onStart) {
                 Text(ctaTitle)
@@ -49,5 +52,5 @@ struct PayWallSheet: View {
 
 
 #Preview {
-    PayWallSheet(selected: .constant(.monthly), ctaTitle: "Title", onStart: { })
+    PayWallSheet(selected: .constant(.monthly), ctaTitle: "Title", onStart: { }, mode: .trialOffer)
 }

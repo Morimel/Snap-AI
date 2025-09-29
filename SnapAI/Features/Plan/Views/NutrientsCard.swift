@@ -54,3 +54,6 @@ struct NutrientsCard: View {
     }
 }
 
+#Preview {
+    NutrientsCard(value: 1, title: "title", color: .red)
+}

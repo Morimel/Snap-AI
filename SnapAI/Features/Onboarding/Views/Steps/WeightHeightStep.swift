@@ -16,8 +16,9 @@ struct WeightHeightStep: View {
 
     enum Mode {
         case onboarding
-        case picker(onSelect: (_ _heightDisplay: String,  _ _weightDisplay: String) -> Void)
+        case picker(onSelect: (_ heightDisplay: String, _ weightDisplay: String) -> Void)
     }
+
     var mode: Mode = .onboarding
 
     @Environment(\.dismiss) private var dismiss
@@ -128,16 +129,9 @@ struct WeightHeightStep: View {
         .task {
             guard !didBootstrap else { return }
             didBootstrap = true
-
-            if vm.data.unit != .imperial {
-                vm.data.unit = .imperial
-            }
-            if let w = vm.data.weight {
-                weightText = String(format: "%.0f", w)
-            }
-            if let h = vm.data.height {
-                heightText = String(format: "%.0f", h)
-            }
+            // НЕ форсить imperial — оставить как есть
+            if let w = vm.data.weight { weightText = String(format: "%.0f", w) }
+            if let h = vm.data.height { heightText = String(format: "%.0f", h) }
         }
         .onChange(of: weightText) { s in
             let sanitized = s.replacingOccurrences(of: ",", with: ".")
@@ -152,6 +146,13 @@ struct WeightHeightStep: View {
             if vm.data.height != newVal {
                 vm.data.height = newVal
             }
+        }
+        .onDisappear {
+            guard case .picker = mode else { return }
+            let w = Double(weightText.replacingOccurrences(of: ",", with: "."))
+            let h = Double(heightText.replacingOccurrences(of: ",", with: "."))
+            if vm.data.weight != w { vm.data.weight = w }
+            if vm.data.height != h { vm.data.height = h }
         }
     }
 

@@ -41,6 +41,7 @@ struct ReviewCard: View {
             }
             .padding(.vertical, 24)
         }
+        .frame(height: 280)
         .padding(.horizontal, 4)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 12))

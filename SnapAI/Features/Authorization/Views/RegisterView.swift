@@ -129,7 +129,9 @@ struct AuthScreenRegister: View {
             }
             .padding(.vertical, 6)
             
-            SocialButton(title: "Continue with Apple", systemImage: "apple.logo") { }
+            SocialButton(title: "Continue with Apple", systemImage: "apple.logo") {
+                signInWithAppleAndRoute(router: router)
+            }
             SocialButton(title: "Continue with Google", systemImage: "g.circle.fill") {
                 signInWithGoogleAndRoute(router: router)
             }

@@ -14,8 +14,10 @@ final class OnboardingViewModel: ObservableObject {
     @Published var phase: OnboardingPhase = .goal
     @Published var personalPlan: PersonalPlan? // для следующего экрана
     @Published var progress: Double = 0.0
+    
+    private var isFinishing = false
 
-    private let repository: OnboardingRepository
+    let repository: OnboardingRepository
     private let onFinished: () -> Void
 
     init(repository: OnboardingRepository, onFinished: @escaping () -> Void) {
@@ -30,6 +32,10 @@ final class OnboardingViewModel: ObservableObject {
 
     /// Единая финализация: сохранить + запросить план
     func finish() async {
+        guard !isFinishing else { return }
+                isFinishing = true
+                defer { isFinishing = false }
+        
             phase = .submitting
             withAnimation(.easeInOut(duration: 0.2)) { progress = 0.05 }
 
@@ -39,6 +45,7 @@ final class OnboardingViewModel: ObservableObject {
             do {
                 // 1) «Сохранение в БД»
                 try await repository.submitOnboarding(data: data)
+                print("📤 SUBMIT payload:", data.backendPayload()) // ← лог на всякий
                 withAnimation(.easeInOut(duration: 0.25)) { progress = 0.35 }
 
                 // 2) «Запрос в ChatGPT» (+ ожидание ответа)
@@ -57,7 +64,6 @@ final class OnboardingViewModel: ObservableObject {
                 withAnimation(.easeInOut(duration: 0.25)) { progress = 1.0 }
 
                 phase = .ready
-                onFinished() // если после онбординга переключаешь root на PlanHostView
             } catch {
                 ticker?.cancel()
                 phase = .failed(error.localizedDescription)

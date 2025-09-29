@@ -11,10 +11,8 @@ import SwiftUI
 struct DateOfBirthStep: View {
     @ObservedObject var vm: OnboardingViewModel
 
-    enum Mode {
-        case onboarding
-        case picker(onSelect: (String) -> Void)   // вернём строку вроде "27 years old"
-    }
+   
+    enum Mode { case onboarding, picker(onSelect: (String) -> Void) }
     var mode: Mode = .onboarding
 
     @Environment(\.dismiss) private var dismiss
@@ -35,8 +33,8 @@ struct DateOfBirthStep: View {
 
             // Если твой DateWheelPicker поддерживает биндинг – лучше так:
             // DateWheelPicker(selected: $selectedDate)
-            DateWheelPicker()
-
+            DateWheelPicker(selected: $selectedDate)
+            
             Spacer()
 
             switch mode {
@@ -49,11 +47,16 @@ struct DateOfBirthStep: View {
                         .background(AppColors.secondary)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                 }
+                .simultaneousGesture(TapGesture().onEnded {
+                                    vm.data.birthDate = selectedDate
+                                    vm.saveDraft()
+                                })
                 .padding(.horizontal, 40)
                 .padding(.bottom, 28)
 
             case .picker(let onSelect):
                 Button {
+                    vm.data.birthDate = selectedDate   // ← ОБЯЗАТЕЛЬНО
                     let ageString = makeAgeString(from: selectedDate)
                     // при желании ещё и в модель: vm.data.birthDate = selectedDate
                     onSelect(ageString)
@@ -100,7 +103,7 @@ struct DateOfBirthStep: View {
         }
         .onAppear {
             // если дата уже в модели — подхватить:
-            // if let d = vm.data.birthDate { selectedDate = d }
+            if let d = vm.data.birthDate { selectedDate = d }
         }
     }
 

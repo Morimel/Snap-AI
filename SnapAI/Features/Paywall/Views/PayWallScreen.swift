@@ -83,46 +83,38 @@ struct PayWallScreen: View {
                         
                         PayWallSheet(
                             selected: $selected,
-                            ctaTitle: mode.ctaTitle
-                        ) {
-                            if mode == .trialOffer {
-                                onStartTrial()   // Start for free → запустить минутный таймер и закрыть
-                            } else {
-                                onProceed()      // Pay → заглушка оплаты (hasPayed = true)
-                            }
-                        }
-                        
-                        // Текст trial — только в режиме trialOffer
-                        if mode.showsTrialTerms {
-                            Text("*7-day free trial, then $19.99/month")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 2)
-                        }
+                            ctaTitle: mode.ctaTitle,
+                            onStart: {
+                                if mode == .trialOffer {
+                                    onStartTrial()
+                                } else {
+                                    onProceed()
+                                }
+                            },
+                            mode: mode
+                        )
                     }
                     .offset(y: sheetYOffset)        // ← ОПУСТИЛИ «зелёную» часть
                     .frame(height: bottomH)
                 }
             }
-        }
-        .ignoresSafeArea()
-        .toolbar {
-            if mode.showsClose {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: onStartTrial) {          // ✕ делает то же самое, что "Start for free"
+            // КРЕСТИК — собственный оверлей, а не toolbar
+            .overlay(alignment: .topTrailing) {
+                if mode.showsClose {
+                    Button(action: onStartTrial) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(.black.opacity(0.35))
+                            .clipShape(Circle())
                     }
-                    .foregroundColor(.white)
-                    .background(.black.opacity(0.35))
-                    .clipShape(Circle())
+                    .padding(.top, geo.safeAreaInsets.top + 48)
+                    .padding(.trailing, 24)
                 }
             }
         }
-        .toolbarBackground(.hidden, for: .navigationBar)   // ⬅️ скрыли фон навбара
-        .toolbarColorScheme(.dark, for: .navigationBar)    // светлые элементы
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
+        .ignoresSafeArea()
     }
 }
 

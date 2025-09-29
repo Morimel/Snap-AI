@@ -158,6 +158,7 @@
 				Features/Onboarding/Models/OnboardingPhase.swift,
 				Features/Plan/Views/BulletListBox.swift,
 				Features/Plan/Views/BulletRow.swift,
+				Info.plist,
 				Resources/Assets.xcassets,
 				UI/Components/Progress/ProgressBar.swift,
 				UI/Theme/AppColors.swift,
@@ -545,6 +546,7 @@
 				DEVELOPMENT_TEAM = 693RJ6S5KS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnapAI/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera Permission";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Camera Roll Permission";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -580,6 +582,7 @@
 				DEVELOPMENT_TEAM = 693RJ6S5KS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SnapAI/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera Permission";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Camera Roll Permission";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

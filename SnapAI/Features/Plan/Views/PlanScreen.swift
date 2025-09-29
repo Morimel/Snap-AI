@@ -14,6 +14,7 @@ struct PlanScreen: View {
     
     @State private var path = NavigationPath()
     @State private var showChangeTarget = false
+    let goalCaption: String   // 👈 добавили
     
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Environment(\.dismiss) private var dismiss
@@ -45,7 +46,6 @@ struct PlanScreen: View {
     ]
     
     var body: some View {
-        NavigationStack {
             
             ScrollView {
                 VStack {
@@ -59,19 +59,16 @@ struct PlanScreen: View {
                         .foregroundStyle(AppColors.primary)
                         .font(.system(size: 24, weight: .semibold, design: .default))
                     
-                    Text("You will maintain \(plan.maintainWeight) \(plan.weightUnit)")
-                        .foregroundStyle(AppColors.primary)
-                        .padding()
-                        .padding(.horizontal, 4)
-                        .frame(height: 40)
-                        .background(
-                            Capsule().fill(.white)     // белый фон
-                        )
-                        .overlay (
-                            Capsule()
-                                .stroke(AppColors.primary.opacity(0.1), lineWidth: 2)
-                                .frame(width: 220, height: 40)
-                        )
+                    Text(goalCaption)
+                                            .foregroundStyle(AppColors.primary)
+                                            .padding()
+                                            .frame(height: 40)
+                                            .background(Capsule().fill(.white))
+                                            .overlay(
+                                                Capsule()
+                                                    .stroke(AppColors.primary.opacity(0.1), lineWidth: 2)
+                                                    .frame(width: 220, height: 40)
+                                            )
                     
                     HStack {
                         Text("Calorie and macronutrient\nrecommendations")
@@ -124,6 +121,7 @@ struct PlanScreen: View {
                     .background(AppColors.background.ignoresSafeArea())
                 }
             }
+            .navigationBarBackButtonHidden(true)
             .background(AppColors.background.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) {
                 StickyCTA(title: "Next") {
@@ -135,11 +133,29 @@ struct PlanScreen: View {
                             ChangeTargetView()
                         }
             
-        }
+        
         // как только онбординг завершён — закрываем себя (fullScreenCover от RateStep)
                 .onChange(of: hasOnboarded) { new in
                     if new { dismiss() }
                 }
+    }
+}
+
+extension PlanScreen {
+    init(plan: PersonalPlan, goalCaption: String = "Maintain weight", onNext: (() -> Void)? = nil) {
+        self.plan = plan
+        self.goalCaption = goalCaption
+        self.onNext = onNext
+    }
+}
+
+extension Goal {
+    var caption: String {
+        switch self {
+        case .lose: return "Lose weight"
+        case .gain: return "Gain weight"
+        case .maintain: return "Maintain weight"
+        }
     }
 }
 
@@ -149,3 +165,5 @@ struct PlanScreen: View {
         PlanScreen(plan: .preview)
     }
 }
+
+

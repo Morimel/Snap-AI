@@ -10,88 +10,83 @@ import StoreKit
 
 //MARK: - RateStep
 struct RateStep: View {
+    @EnvironmentObject private var router: OnboardingRouter
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @ObservedObject var vm: OnboardingViewModel
-    @Binding var path: NavigationPath          // ← добавили
-    
+
     @State private var currentRating = 0
     @State private var showFeedbackForm = false
     @State private var showSubmitting = false
-    @State private var showPlan = false           // 👈 добавили
-    @State private var showError = false          // 👈 добавили
-    @State private var errorMsg = ""              // 👈 добавили
-    @State private var pendingReviewLaunch = false  // ← флаг ожидания возврата из App Store
-    
+    @State private var showError = false
+    @State private var errorMsg = ""
+    @State private var pendingReviewLaunch = false
+
     @Environment(\.openURL) private var openURL
-    @Environment(\.scenePhase) private var scenePhase  // ← чтобы ловить возврат из App Store
+    @Environment(\.scenePhase) private var scenePhase
     private let appID = "1234567890" // TODO: реальный
-    
+
     var body: some View {
-        ZStack {
-            content
-        }
-        .fullScreenCover(isPresented: $showSubmitting) {
-            SubmittingOverlay(
-                title: "Creating your personalized meal\nand workout plan",
-                subtitle: "Analyzing your responses...",
-                progress: $vm.progress,
-                onCancel: nil // обычно отмена не нужна
-            )
-            .task { await vm.finish() }
-        }
-        .fullScreenCover(isPresented: $showPlan) {     // 👈 показываем PlanScreen
-            if let plan = vm.personalPlan {
-                PlanScreen(plan: plan)
-            } else {
-                Text("Нет данных плана")
+        ZStack { content }
+            // Оверлей «Submitting…» + логика получения плана и перехода
+            .fullScreenCover(isPresented: $showSubmitting) {
+                SubmittingOverlay(
+                    title: "Creating your personalized meal\nand workout plan",
+                    subtitle: "Analyzing your responses...",
+                    progress: $vm.progress,
+                    onCancel: nil
+                )
+                .task {
+                    do {
+                        await vm.finish()
+
+                        guard let plan = vm.repository.fetchSavedPlan() ?? vm.personalPlan else {
+                            throw NSError(domain: "plan", code: -1,
+                                          userInfo: [NSLocalizedDescriptionKey: "Plan is empty"])
+                        }
+                        let caption = vm.data.goalCaption()
+
+                        await MainActor.run { showSubmitting = false }
+                        try? await Task.sleep(nanoseconds: 250_000_000)   // дать закрыться анимации cover
+
+                        await MainActor.run {
+                            router.push(.plan(plan, caption))
+                        }
+                    } catch {
+                        await MainActor.run {
+                            showSubmitting = false
+                            errorMsg = error.localizedDescription
+                            showError = true
+                        }
+                    }
+                }
             }
-        }
-        .onChange(of: vm.phase) { new in
-            switch new {
-            case .ready:
-                showSubmitting = false
-                showPlan = true
-            case .failed(let msg):
-                showSubmitting = false
-                errorMsg = msg
-                showError = true
-            default: break
+            // Возврат из App Store → стартуем сабмит
+            .onChange(of: scenePhase) { phase in
+                if phase == .active, pendingReviewLaunch {
+                    pendingReviewLaunch = false
+                    startSubmitting()
+                }
             }
-        }
-        // Возврат из App Store → стартуем сабмит
-        .onChange(of: scenePhase) { phase in
-            if phase == .active, pendingReviewLaunch {
-                pendingReviewLaunch = false
-                startSubmitting()
+            // Алёрт на ошибку
+            .alert("Ошибка", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMsg)
             }
-        }
-        // Если вдруг флаг онбординга переключился — закроем покрытия
-        .onChange(of: hasOnboarded) { new in
-            if new {
-                showPlan = false
-                showSubmitting = false
-            }
-        }
-        .alert("Ошибка", isPresented: $showError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorMsg)
-        }
     }
-    
-    private var isError: Bool {
-        if case .failed = vm.phase { return true }
-        return false
-    }
-    
+
+    // MARK: - Контент
     private var content: some View {
         VStack {
             StarLine(rating: $currentRating)
+
             Text("Snap AI helps you reach your goals")
                 .foregroundStyle(AppColors.primary)
                 .font(.system(size: 20, weight: .regular))
                 .padding()
+
             Spacer()
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 20) {
                     ReviewCard(
@@ -116,7 +111,9 @@ struct RateStep: View {
                 }
             }
             .padding(.trailing, -16)
+
             Spacer()
+
             Button { rateAndProceed() } label: {
                 Text("Rate")
                     .font(.headline)
@@ -132,11 +129,7 @@ struct RateStep: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    startSubmitting()
-                } label: {
-                    BackButton()
-                }
+                Button { startSubmitting() } label: { BackButton() }
             }
             ToolbarItem(placement: .principal) {
                 Text("Rate Us")
@@ -144,40 +137,43 @@ struct RateStep: View {
                     .foregroundStyle(AppColors.primary)
             }
         }
-        // форма фидбэка при низкой оценке
+        // Форма фидбэка при низкой оценке
         .sheet(isPresented: $showFeedbackForm) {
             FeedbackSheet(
                 rating: currentRating,
-                onSend: { _ in startSubmitting() },   // ← сюда
-                onSkip: { startSubmitting() }         // ← и сюда
+                onSend: { _ in startSubmitting() },
+                onSkip: { startSubmitting() }
             )
         }
     }
-    
+
+    // MARK: - Хелперы
     private func requestStoreReview() {
-        if let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene }).first {
+        if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
             SKStoreReviewController.requestReview(in: scene)
         }
     }
-    
+
     private func startSubmitting() {
         guard !showSubmitting else { return }
         showSubmitting = true
         vm.phase = .submitting
     }
-    
-    
+
     private func rateAndProceed() {
         if currentRating >= 4 {
+            // Откроем App Store и после возврата запустим сабмит
             pendingReviewLaunch = true
             if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
                 openURL(url)
             } else {
                 requestStoreReview()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    startSubmitting()
+                }
             }
         } else {
+            // Попросим фидбэк и затем сабмит
             showFeedbackForm = true
         }
     }
@@ -186,9 +182,8 @@ struct RateStep: View {
 #Preview {
     NavigationStack {
         RateStep(
-            vm: OnboardingViewModel(repository: LocalRepository(), onFinished: {}),
-            path: .constant(NavigationPath())
+            vm: OnboardingViewModel(repository: LocalRepository(), onFinished: {})
         )
+        .environmentObject(OnboardingRouter())
     }
 }
-

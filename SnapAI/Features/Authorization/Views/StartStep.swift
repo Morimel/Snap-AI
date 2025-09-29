@@ -8,6 +8,7 @@ import SwiftUI
 
 struct StartStep: View {
     @ObservedObject var vm: OnboardingViewModel
+    @EnvironmentObject private var router: OnboardingRouter
     @State private var focalYOffset: CGFloat = 0
 
     var body: some View {
@@ -22,12 +23,8 @@ struct StartStep: View {
                         .offset(y: focalYOffset)
 
                     FocusSquare().offset(y: -130)
-
-                    AppImages.OtherImages.weightCards
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: geo.size.height * 0.5)
-                        .clipped()
+                    
+                    NutrientChipsCluster()
                         .offset(y: -140)
                 }
 
@@ -41,8 +38,10 @@ struct StartStep: View {
                     Text("Count calories from a photo in just 1 click")
                         .multilineTextAlignment(.center)
                         .foregroundColor(AppColors.text)
-
-                    NavigationLink(value: OnbRoute.meeting) {
+                    
+                    Button {
+                        router.push(.meeting)
+                    } label: {
                         Text("Get Started")
                             .font(.headline)
                             .frame(maxWidth: .infinity, minHeight: 56)
@@ -51,6 +50,8 @@ struct StartStep: View {
                             .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
                     .padding(.bottom, 28)
+
+                    
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 24)
@@ -77,21 +78,23 @@ struct NutrientChip: View {
     var circleColor: Color
     var circleTextColor: Color = .white
 
-    private let pillBG = Color(red: 0.93, green: 0.98, blue: 0.95) // светло-мятный как в примере
+    private let pillBG = AppColors.background
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center) {
             ZStack {
                 Circle().fill(circleColor)
+                    .frame(width: 28, height: 28)
                 Text(initial)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(circleTextColor)
             }
-            .frame(width: 22, height: 22)
+            .frame(width: 52, height: 48)
 
             Text(valueText)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.primary)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppColors.primary)
+                .padding(.trailing)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -109,20 +112,20 @@ struct NutrientChipsCluster: View {
             Color.clear
 
             // P 50 g (белки)
-            NutrientChip(initial: "P", valueText: "50 g", circleColor: .blue)
-                .offset(x: -60, y: -95)
+            NutrientChip(initial: "P", valueText: "50 g", circleColor: AppColors.customBlue)
+                .offset(x: -90, y: -160)
 
             // F 32 g (жиры)
-            NutrientChip(initial: "F", valueText: "32 g", circleColor: .green)
-                .offset(x: 58, y: -52)
+            NutrientChip(initial: "F", valueText: "32 g", circleColor: AppColors.customGreen)
+                .offset(x: 88, y: -24)
 
             // C 150 g (углеводы) — буква в кружке тёмная, как в примере
-            NutrientChip(initial: "C", valueText: "150 g", circleColor: .yellow, circleTextColor: .black)
-                .offset(x: -74, y: 18)
+            NutrientChip(initial: "C", valueText: "150 g", circleColor: AppColors.customOrange)
+                .offset(x: -86, y: 28)
 
             // K 241 kcal (калории)
-            NutrientChip(initial: "K", valueText: "241 kcal", circleColor: .red)
-                .offset(x: 10, y: 86)
+            NutrientChip(initial: "K", valueText: "241 kcal", circleColor: AppColors.customRed)
+                .offset(x: 76, y: 164)
         }
         .frame(width: 194, height: 252) // под размер рефа
     }

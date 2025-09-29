@@ -61,6 +61,7 @@ struct ShakeEffect: GeometryEffect {
 // MARK: - Экран подтверждения
 struct EmailConfirmationView: View {
     @ObservedObject var vm: OnboardingViewModel
+    @AppStorage(AuthFlags.isRegistered) private var isRegistered = false
     
     let email: String
     let sessionId: String
@@ -260,6 +261,8 @@ struct EmailConfirmationView: View {
                 password: passwordForVerify
             )
             TokenStore.save(.init(access: pair.access, refresh: pair.refresh))
+            UserStore.save(id: pair.user?.id, email: pair.user?.email)
+            isRegistered = true
             // TODO: сохранить pair.access / pair.refresh в Keychain
             guard !didRoute else { return }
             didRoute = true

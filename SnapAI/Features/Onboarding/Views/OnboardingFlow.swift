@@ -6,52 +6,57 @@
 //
 import SwiftUI
 
+enum AuthFlags {
+    static let isRegistered = "auth.isRegistered.v2"
+}
+
 struct OnboardingFlow: View {
     @ObservedObject var vm: OnboardingViewModel
     @StateObject private var router = OnboardingRouter()
     var onFinish: (() -> Void)? = nil
-    // Если после нового пароля хочешь сразу выйти в app:
-    // @AppStorage("hasOnboarded") private var hasOnboarded = false
-    
+
     var body: some View {
         NavigationStack(path: $router.path) {
             StartStep(vm: vm)
                 .navigationDestination(for: OnbRoute.self) { route in
                     switch route {
-                    case .start:    StartStep(vm: vm)
-                    case .meeting:  MeetingScreen(vm: vm)
+                    case .start:
+                        StartStep(vm: vm)
+                    case .meeting:
+                        MeetingScreen(vm: vm)
                     case .login:
                         LoginView(vm: vm, onSuccess: {
-                            // (не обязательно, но можно подчистить путь)
                             router.popToRoot()
-                            // сообщаем корню выйти в основное приложение
                             onFinish?()
                         })
                         .navigationBarBackButtonHidden(true)
                     case .register:
                         RegisterView(vm: vm) { email in
                             vm.data.email = email
-                            router.push(.newPassword(email: email))   // 👈 передаём email
+                            router.push(.newPassword(email: email))
                         }
                     case .emailOTP(let email, let sessionId, let password):
-                            EmailConfirmationView(
-                                vm: vm,
-                                email: email,
-                                sessionId: sessionId,
-                                passwordForVerify: password
-                            )
+                        EmailConfirmationView(
+                            vm: vm,
+                            email: email,
+                            sessionId: sessionId,
+                            passwordForVerify: password
+                        )
                     case .newPassword(let email):
-                            NewPasswordView(vm: vm, email: email)  // ← без колбэка
+                        NewPasswordView(vm: vm, email: email)
                             .navigationBarBackButtonHidden(true)
                     case .gender:
                         GenderStep(vm: vm)
-                            .navigationBarBackButtonHidden(true) // чтобы нельзя было вернуться назад
+                            .navigationBarBackButtonHidden(true)
+                    case let .plan(plan, caption):
+                        PlanScreen(plan: plan, goalCaption: caption)
                     }
                 }
         }
         .environmentObject(router)
     }
 }
+
 
 enum OnbRoute: Hashable {
     case start
@@ -61,6 +66,7 @@ enum OnbRoute: Hashable {
     case emailOTP(email: String, sessionId: String, password: String)
     case newPassword(email: String)
     case gender
+    case plan(PersonalPlan, String)
 }
 
 

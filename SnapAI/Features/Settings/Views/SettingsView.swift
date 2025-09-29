@@ -12,17 +12,24 @@ struct SettingsView: View {
     @ObservedObject var vm: OnboardingViewModel
 
     // Данные для примера; подмени своими
-    @State private var gender = "Male"
-    @State private var age = "27 years old"
-    @State private var height = "5'9\""
-    @State private var weight = "150 lbs"
-    @State private var goal = "135 lbs"
+    @State private var gender = "—"
+    @State private var age = "—"
+    @State private var height = "—"
+    @State private var weight = "—"
+    @State private var goal = "—"
+    
+    @State private var loading = false
+        @State private var error: String?
     
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                
+                if let error {
+                    Text(error).foregroundColor(.red).padding(.horizontal)
+                }
                 // Карточка с ключ-значение
                 SectionCard {
                     KeyValueRow(key: "Gender", value: gender)
@@ -58,9 +65,29 @@ struct SettingsView: View {
                             .frame(height: 54)
                             .padding(.horizontal, 16)
                         }
-                        ChevronRow(title: "Change goals") {
-                            // TODO: открыть экран смены целей
+                        .overlay {
+                                    if loading { ProgressView().controlSize(.large) }
+                                }
+                        
+                        // Personalization > SectionCard
+                        NavigationLink {
+                            GoalStep(vm: vm, mode: .picker)   // ← picker-режим
+                                .navigationTitle("Change goal")
+                                .navigationBarTitleDisplayMode(.inline)
+                        } label: {
+                            HStack {
+                                Text("Change goals")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(AppColors.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(AppColors.primary)
+                            }
+                            .frame(height: 54)
+                            .padding(.horizontal, 16)
                         }
+
+                        
                         NavigationLink {
                             ChangeTargetView()
                         } label: {
@@ -121,7 +148,92 @@ struct SettingsView: View {
                 
             }
         }
+        .task { await loadProfile() }  // ⬅️ грузим при открытии
+        .onReceive(NotificationCenter.default.publisher(for: .profileDidChange)) { _ in
+            Task { await loadProfile() }         // авто-рефреш после сохранений
+        }
     }
+    
+    // MARK: - Load
+    private func loadProfile() async {
+        // если id не сохранён — попробуем вытащить из access JWT
+        CurrentUser.ensureIdFromJWTIfNeeded()
+        
+        if UserStore.id() == nil, let access = TokenStore.load()?.access,
+               let id = JWTTools.userId(from: access) {
+                UserStore.save(id: id, email: JWTTools.email(from: access))
+            }
+
+        guard let id = UserStore.id() else {
+            await MainActor.run {
+                error = "User ID not found"
+                loading = false
+            }
+            return
+        }
+
+        await MainActor.run { loading = true; error = nil }
+
+        do {
+            let p = try await AuthAPI.shared.getProfile(id: id)
+            await MainActor.run {
+                applyProfile(p)
+                loading = false
+            }
+        } catch {
+            await MainActor.run {
+                self.error = error.localizedDescription
+                self.loading = false
+            }
+        }
+    }
+
+    
+    
+    private func applyProfile(_ p: Profile) {
+           // gender
+           gender = (p.gender ?? "-").capitalized
+
+           // age (из "yyyy-MM-dd" или ISO8601)
+           age = ageString(from: p.date_of_birth)
+
+           // units
+           let units = (p.units ?? "metric").lowercased()
+
+           // height
+           if let cm = p.height_cm {
+               height = (units == "imperial") ? feetInchesString(cm: cm) : "\(cm) cm"
+           } else { height = "—" }
+
+           // weight
+           if let kg = p.weight_kg {
+               weight = (units == "imperial") ? "\(Int(round(Double(kg) * 2.20462262))) lbs" : "\(kg) kg"
+           } else { weight = "—" }
+
+           // goal (целевой вес)
+           if let targetKg = p.desired_weight_kg {
+               goal = (units == "imperial") ? "\(Int(round(Double(targetKg) * 2.20462262))) lbs"
+                                            : "\(targetKg) kg"
+           } else { goal = "—" }
+       }
+    
+    
+    private func ageString(from dob: String?) -> String {
+            guard let dob else { return "—" }
+            let df1 = DateFormatter(); df1.dateFormat = "yyyy-MM-dd"; df1.timeZone = .init(secondsFromGMT: 0)
+            let iso = ISO8601DateFormatter()
+            let date = df1.date(from: dob) ?? iso.date(from: dob)
+            guard let date else { return "—" }
+            let years = Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? 0
+            return "\(years) years old"
+        }
+
+        private func feetInchesString(cm: Int) -> String {
+            let inchesTotal = Double(cm) / 2.54
+            let ft = Int(inchesTotal / 12.0)
+            let inch = Int(round(inchesTotal)) % 12
+            return "\(ft)'\(inch)\""
+        }
 }
 
 #Preview {

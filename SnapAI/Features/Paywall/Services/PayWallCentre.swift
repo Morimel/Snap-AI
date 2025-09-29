@@ -28,6 +28,12 @@ enum PaywallMode {
 
 @MainActor
 final class PaywallCenter: ObservableObject {
+    
+    private enum Keys {
+            static let hasPayed   = "pay.hasPayed.v2"
+            static let lockAtTS   = "pay.lockAtTS.v2"
+        }
+    
     // Флаг оплаты (твой "hasPayed")
     @AppStorage("hasPayed") var hasPayed: Bool = false
 
@@ -36,21 +42,36 @@ final class PaywallCenter: ObservableObject {
 
     // Управление показом
     @Published var isShowing: Bool = false
-    
-    var mode: PaywallMode { hasPayed ? .trialOffer : .lockedAfterTrial }
-
+    private var forcedMode: PaywallMode? = nil
     private var oneShotTimer: Timer?
+    
+    var mode: PaywallMode {
+        if let forcedMode { return forcedMode }
+        // не оплачен и grace не запускали → trial
+        if !hasPayed && lockAtTS == 0 { return .trialOffer }
+        // иначе locked
+        return .lockedAfterTrial
+    }
 
     // Открыть стартовый paywall (по кнопке Next)
     func presentInitial() {
             // если уже оплачен — вообще не показываем
             guard !hasPayed else { return }
+            forcedMode = .trialOffer
             isShowing = true
         }
+    
+       // Открыть сразу locked (используем из Login)
+       func presentLocked() {
+           guard !hasPayed else { return }
+           forcedMode = .lockedAfterTrial
+           isShowing = true
+       }
 
     // Нажали ✕ или "Start for free" → закрываем и ставим таймер на 1 мин
     func startGraceMinuteAndClose() {
-        guard !hasPayed else { isShowing = false; return }
+        guard !hasPayed else { isShowing = false; forcedMode = nil; return }
+        forcedMode = nil
         scheduleLockdown(in: 60)   // 60 сек
         isShowing = false          // уйти на экран под ним (Main / онбординг)
     }
@@ -62,6 +83,7 @@ final class PaywallCenter: ObservableObject {
         lockAtTS = 0
         oneShotTimer?.invalidate()
         oneShotTimer = nil
+        forcedMode = nil
     }
 
     // Проверка при возврате в актив (или по таймеру)
@@ -69,8 +91,8 @@ final class PaywallCenter: ObservableObject {
             guard !hasPayed, lockAtTS > 0 else { return }
             let now = Date().timeIntervalSince1970
             if now >= lockAtTS {
-                hasPayed = false       // 🔑 по истечении минуты флаг становится false
-                isShowing = true       // покажем paywall уже в locked-режиме
+                          isShowing = true
+                          forcedMode = .lockedAfterTrial
             }
         }
 

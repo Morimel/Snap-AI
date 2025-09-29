@@ -41,7 +41,7 @@ struct LoginView: View {
                         if paywall.hasPayed {
                             onSuccess()
                         } else {
-                            paywall.isShowing = true         // откроется locked, т.к. hasPayed == false
+                            paywall.presentLocked()      // сразу locked-экран без крестика
                         }
 
                             })
@@ -209,20 +209,118 @@ struct AuthScreenLogin: View {
     @State private var email = ""
     @State private var password = ""
     
+    @FocusState private var emailFocused: Bool
+        @FocusState private var passwordFocused: Bool
+        @State private var didAttempt = false
+
+        @State private var isLoading = false
+        @State private var formError: String?
+    @EnvironmentObject private var router: OnboardingRouter
+
+
+        @AppStorage(AuthFlags.isRegistered) private var isRegistered = false
+    
+    private var emailTrimmed: String { email.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private func isValidEmail(_ s: String) -> Bool {
+           let pattern = #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#
+           return NSPredicate(format: "SELF MATCHES[c] %@", pattern).evaluate(with: s)
+       }
+    
+    private var isEmailValid: Bool {
+            !emailTrimmed.isEmpty && isValidEmail(emailTrimmed)
+        }
+        private var isPasswordValid: Bool {
+            !password.isEmpty
+        }
+
+        private var showEmailError: Bool {
+            !emailTrimmed.isEmpty && !isValidEmail(emailTrimmed) && (didAttempt || !emailFocused)
+        }
+        private var showPasswordError: Bool {
+            !password.isEmpty && (password.count < 1) && (didAttempt || !passwordFocused) // при желании ужесточь
+        }
+
+        private var isFormValid: Bool { isEmailValid && isPasswordValid }
+    
+    private func login() {
+            didAttempt = true
+            guard isFormValid, !isLoading else { return }
+
+            isLoading = true
+            formError = nil
+
+            Task {
+                do {
+                    let pair = try await AuthAPI.shared.token(email: emailTrimmed, password: password)
+                    TokenStore.save(.init(access: pair.access, refresh: pair.refresh))
+                    
+                    if let u = pair.user {
+                                    UserStore.save(id: u.id, email: u.email)
+                                } else {
+                                    // fallback: вытащим id/email из access JWT
+                                    if let id = JWTTools.userId(from: pair.access) {
+                                        UserStore.save(id: id, email: JWTTools.email(from: pair.access))
+                                    }
+                                }
+                    isRegistered = true                      // 🔑 зарегистрирован
+                    await MainActor.run { onContinue() }     // родитель (LoginView) решит про paywall
+                } catch let APIError.validation(map) {
+                    await MainActor.run {
+                        formError = map.values.first?.first ?? "Invalid e-mail or password."
+                        isLoading = false
+                    }
+                } catch APIError.http(_, let body) {
+                    await MainActor.run {
+                        formError = body?.isEmpty == false ? body : "Login failed. Try again."
+                        isLoading = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        formError = error.localizedDescription
+                        isLoading = false
+                    }
+                }
+            }
+        }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            LabeledInput(label: "E-mail:", placeholder: "Your e-mail", text: $email)
-            LabeledInput(label: "Password:", placeholder: "Your  password", text: $password, isSecure: true)
+            LabeledInput(
+                label: "E-mail:",
+                placeholder: "Your e-mail",
+                text: $email,
+                isInvalid: showEmailError,
+                errorText: showEmailError ? "Invalid e-mail" : nil,
+                focused: $emailFocused
+            )
+            LabeledInput(
+                label: "Password:",
+                placeholder: "Your password",
+                text: $password,
+                isSecure: true,
+                isInvalid: showPasswordError,
+                errorText: showPasswordError ? "Enter your password" : nil,
+                focused: $passwordFocused
+            )
             
-            Button(action: onContinue) {             // ← ВАЖНО: вызываем onContinue
-                            Text("Continue")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity, minHeight: 56)
-                        }
-            .background(AppColors.secondary)
+            Button(action: login) {
+                ZStack {
+                    Text(isLoading ? "Signing in…" : "Continue")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                    if isLoading {
+                        ProgressView().controlSize(.regular)
+                    }
+                }
+            }
+            .background(isFormValid ? AppColors.secondary : AppColors.secondary.opacity(0.5))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .padding(.top, 6)
+            .disabled(!isFormValid || isLoading)
+            .submitLabel(.go)
+            .onSubmit { login() }
             
             HStack {
                 Rectangle().fill(AppColors.text.opacity(0.12)).frame(height: 1)
@@ -231,8 +329,13 @@ struct AuthScreenLogin: View {
             }
             .padding(.vertical, 6)
             
-            SocialButton(title: "Continue with Apple", systemImage: "apple.logo") { }
-            SocialButton(title: "Continue with Google", systemImage: "g.circle.fill") { }
+            SocialButton(title: "Continue with Apple", systemImage: "apple.logo") {
+                signInWithApple(onAuthSuccess: onContinue)  // ⬅️ теперь одинаково с e-mail
+            }
+            SocialButton(title: "Continue with Google", systemImage: "g.circle.fill") {
+                signInWithGoogle(onAuthSuccess: onContinue)
+            }
+
         }
         // НЕТ собственного фона и ignoresSafeArea здесь
     }
