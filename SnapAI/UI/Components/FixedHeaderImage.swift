@@ -12,13 +12,13 @@ struct FixedHeaderImage: View {
     static let height: CGFloat = 380
 
     var body: some View {
-        ZStack {                // фон, если картинка уже узкая/высокая
+        ZStack {                
             Color.black
             Image(uiImage: image)
                 .resizable()
                 .interpolation(.high)
                 .antialiased(true)
-                .scaledToFill() // центр-кроп внутри фиксированного контейнера
+                .scaledToFill()
         }
         .frame(maxWidth: .infinity)
         .frame(height: Self.height)

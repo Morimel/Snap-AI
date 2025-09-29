@@ -16,25 +16,23 @@ struct CapsuleButtonStyle: ButtonStyle {
     var role: Role = .primary
     var size: Size = .large
 
-    // ✅ Явный инициализатор для роли
     init(role: Role = .primary, size: Size = .large) {
         self.role = role
         self.size = size
     }
 
-    // Твой кастомный инициализатор по бэкграунду
     init(background: Color, size: Size = .large, foreground: Color = .white) {
         self.role = .custom(bg: background, fg: foreground)
         self.size = size
     }
 
-    func makeBody(configuration: Configuration) -> some View { /* как было */ }
+    func makeBody(configuration: Configuration) -> some View { }
 }
 
 // Сахар
 extension ButtonStyle where Self == CapsuleButtonStyle {
     static func capsule(_ role: CapsuleButtonStyle.Role = .primary,
                         size: CapsuleButtonStyle.Size = .large) -> CapsuleButtonStyle {
-        CapsuleButtonStyle(role: role, size: size)   // ✅ теперь существует
+        CapsuleButtonStyle(role: role, size: size)
     }
 }

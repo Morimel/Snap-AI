@@ -13,7 +13,6 @@ struct StatisticsCard: View {
     let needKcal: Int
     let spentKcal: Int
     
-    // (текущее, максимум). Пока current = 0, max — из плана (бэк)
         let protein: (current: Int, max: Int)
         let fat:     (current: Int, max: Int)
         let carb:    (current: Int, max: Int)
@@ -110,7 +109,6 @@ struct StatisticsCard: View {
                 .padding(.horizontal, 36)
             }
             
-            // Прогресс-линии: (current, max). Сейчас current=0, max — из плана.
             MacroSummaryCard(
                 protein: (Double(protein.current), Double(protein.max)),
                 fat:     (Double(fat.current),     Double(fat.max)),

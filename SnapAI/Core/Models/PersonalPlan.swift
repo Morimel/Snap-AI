@@ -7,8 +7,7 @@
 
 import SwiftUI
 
-// MARK: - Модель плана (минимум для компиляции)
-// Если у тебя уже есть свой PersonalPlan — удали эту секцию.
+// MARK: - PersonalPlan
 struct PersonalPlan: Codable, Equatable, Hashable {
     struct Meal: Codable, Equatable, Hashable { let time: String; let title: String; let kcal: Int }
     struct Workout: Codable, Equatable, Hashable { let day: String; let focus: String; let durationMin: Int }

@@ -9,9 +9,9 @@ import SwiftUI
 
 struct MetricBadge {
     enum Kind {
-        case system(String)      // SF Symbol, напр. "heart.fill"
-        case text(String)        // любая буква/текст, напр. "У"
-        case image(Image)        // ваша картинка Image(...)
+        case system(String)      
+        case text(String)
+        case image(Image)
     }
     let kind: Kind
     let color: Color
@@ -98,7 +98,7 @@ struct BadgeView: View {
             img
                 .resizable()
                 .scaledToFit()
-                .padding(6) // чтобы картинка не прилипала к краям круга
+                .padding(6)
                 .foregroundStyle(.white)
         }
     }
@@ -111,7 +111,6 @@ struct StepperPill<FieldID: Hashable>: View {
     var min: Int = 1
     var max: Int? = nil
 
-    // 🔹 идентификатор поля и биндинг на фокус родителя
     let field: FieldID
     let focused: FocusState<FieldID?>.Binding
 
@@ -141,7 +140,7 @@ struct StepperPill<FieldID: Hashable>: View {
                     .font(.headline)
                     .foregroundStyle(AppColors.primary)
                     .frame(minWidth: 40)
-                    .focused(focused, equals: field)      // 👈 ключевая строка
+                    .focused(focused, equals: field)
                     .onChange(of: value) { new in
                         if new < min { value = min }
                         if let max, new > max { value = max }
@@ -181,7 +180,6 @@ struct ChangeTarget: View {
     @State private var carbohydrates = 150
     @State private var fats = 32
 
-    // 🔹 Общее состояние фокуса для всех полей
     @FocusState private var focusedField: Field?
 
     enum Field: Hashable {
@@ -260,7 +258,6 @@ struct ChangeTarget: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
-            // ЛЕВАЯ: назад
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: { dismiss() }) {
                     AppImages.ButtonIcons.arrowRight
@@ -271,13 +268,11 @@ struct ChangeTarget: View {
                 }
                 .buttonStyle(.plain)
             }
-            // ЦЕНТР: заголовок
             ToolbarItem(placement: .principal) {
                 Text("Change target")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(AppColors.primary)
             }
-            // 🔹 ОДИН общий toolbar для клавиатуры
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") { focusedField = nil }
@@ -296,7 +291,7 @@ private struct RoundIconButton: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
         }
-        .frame(width: 32, height: 32) // тот же размер, что и раньше
+        .frame(width: 32, height: 32)
         .background(AppColors.primary, in: Circle())
         .overlay(Circle().stroke(AppColors.primary.opacity(0.10), lineWidth: 1))
         .contentShape(Circle())

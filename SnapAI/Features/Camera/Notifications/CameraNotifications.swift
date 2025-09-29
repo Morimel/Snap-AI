@@ -11,6 +11,6 @@ import Foundation
 extension Notification.Name {
     static let takePhoto    = Notification.Name("snapai.takePhoto")
     static let toggleTorch  = Notification.Name("snapai.toggleTorch")
-    static let pauseCamera  = Notification.Name("snapai.camera.pause")   // NEW
-    static let resumeCamera = Notification.Name("snapai.camera.resume")  // NEW
+    static let pauseCamera  = Notification.Name("snapai.camera.pause")   
+    static let resumeCamera = Notification.Name("snapai.camera.resume")
 }

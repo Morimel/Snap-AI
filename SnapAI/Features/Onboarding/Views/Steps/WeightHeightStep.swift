@@ -8,9 +8,6 @@
 import SwiftUI
 
 //MARK: - WeightHeightStep
-import SwiftUI
-
-//MARK: - WeightHeightStep
 struct WeightHeightStep: View {
     @ObservedObject var vm: OnboardingViewModel
 
@@ -78,8 +75,8 @@ struct WeightHeightStep: View {
                 .padding(.bottom, 28)
             } else if case let .picker(onSelect) = mode {
                 Button {
-                    let w = Double(weightText.replacingOccurrences(of: ",", with: "."))  // кг или lbs — зависит от vm.data.unit
-                    let h = Double(heightText.replacingOccurrences(of: ",", with: "."))  // см или дюймы — зависит от vm.data.unit
+                    let w = Double(weightText.replacingOccurrences(of: ",", with: "."))
+                    let h = Double(heightText.replacingOccurrences(of: ",", with: "."))
                     vm.data.weight = w
                     vm.data.height = h
 
@@ -170,13 +167,11 @@ struct WeightHeightStep: View {
         guard let h else { return "—" }
         switch unit {
         case .imperial:
-            // считаем, что h — в дюймах; если в твоей модели иначе — подкорректируй
             let inches = Int(round(h))
             let ft = inches / 12
             let inch = inches % 12
             return "\(ft)'\(inch)\""
         case .metric:
-            // считаем, что h — в сантиметрах
             return "\(Int(round(h))) cm"
         }
     }

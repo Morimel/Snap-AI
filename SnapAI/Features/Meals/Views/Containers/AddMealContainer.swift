@@ -12,7 +12,7 @@ import UIKit
 struct AddMealContainer: View {
     @StateObject private var coordinator = BridgingCoordinator()
     @StateObject private var vm = MealViewModel()
-    @Environment(\.dismiss) private var dismiss   // 👈
+    @Environment(\.dismiss) private var dismiss   
 
     private struct CropSession: Identifiable { let id = UUID(); let image: UIImage }
     @State private var cropSession: CropSession?
@@ -22,7 +22,6 @@ struct AddMealContainer: View {
         Group {
             if let img = croppedImage {
                 MealDetailScreen(image: img, vm: vm, onClose: {
-                    // вернуться в камеру
                     dismiss()
                 })
             } else {
@@ -50,12 +49,11 @@ struct AddMealContainer: View {
                 initialQuad: nil,
                 onRetake: {
                     cropSession = nil
-                    NotificationCenter.default.post(name: .resumeCamera, object: nil) // ← вернули камеру
+                    NotificationCenter.default.post(name: .resumeCamera, object: nil)
                 },
                 onUse: { cropped in
                     croppedImage = cropped
                     cropSession = nil
-                    // камера не нужна — оставляем выключенной
                 }
             )
         }

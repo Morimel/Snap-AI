@@ -70,10 +70,10 @@ struct TokenPair: Decodable {
 
 
 enum APIError: Error, LocalizedError {
-    case validation([String: [String]])     // {"email":["…"],"password":["…"],"otp":["…"]}
-    case http(Int, String?)                 // статус + тело как строка
-    case decoding(String)                   // не смогли распарсить
-    case transport(Error)                   // сеть и т.п.
+    case validation([String: [String]])     
+    case http(Int, String?)
+    case decoding(String)
+    case transport(Error)
 
     var errorDescription: String? {
         switch self {
@@ -90,7 +90,6 @@ final class AuthAPI {
     
     private struct EmptyResponse: Decodable {}
 
-    // ⚠️ Поставь свой базовый хост; без завершающего слеша.
     private let baseURL = URL(string: "https://snap-ai-app.com")!
     private let debugAPI = true
     
@@ -121,7 +120,6 @@ final class AuthAPI {
         try await post("api/auth/register/verify/", ["session_id": sessionId, "otp": otp, "password": password])
     }
 
-    // MARK: - Generic POST
 
     // MARK: - POST with one-time 401 retry via refresh()
     private func post<T: Decodable>(_ path: String, _ body: [String: Any]) async throws -> T {
@@ -133,7 +131,6 @@ final class AuthAPI {
             _ = try await refresh()
             return try await postNoRetry(path, body)
         } catch {
-            // 3) любые другие ошибки пробрасываем наверх
             throw error
         }
     }
@@ -153,13 +150,12 @@ final class AuthAPI {
         }
 
         do {
-            // ПУБЛИЧНЫЕ эндпоинты — без Bearer
             let isAuthless =
-                path.hasPrefix("api/auth/register/")     ||   // start/resend/verify
-                path.hasPrefix("api/auth/google/")   ||   // соц.логин Google (у тебя так)
-                path.hasPrefix("api/auth/apple/")    ||   // соц.логин Apple  (у тебя так)
-                path.hasPrefix("api/auth/token/")        ||   // вход по паролю
-                path.hasPrefix("api/auth/refresh/")           // рефреш access по refresh
+                path.hasPrefix("api/auth/register/")     ||
+                path.hasPrefix("api/auth/google/")   ||
+                path.hasPrefix("api/auth/apple/")    ||
+                path.hasPrefix("api/auth/token/")        ||
+                path.hasPrefix("api/auth/refresh/")
 
             if !isAuthless, let t = TokenStore.load() {
                 req.addValue("Bearer \(t.access)", forHTTPHeaderField: "Authorization")
@@ -196,7 +192,6 @@ final class AuthAPI {
         }
     }
     
-    // ===== GET с авто-рефрешем (как post) =====
     private func get<T: Decodable>(_ path: String) async throws -> T {
         do {
             return try await getNoRetry(path)
@@ -212,7 +207,6 @@ final class AuthAPI {
         req.httpMethod = "GET"
         req.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        // авторизация (эти пути не публичные, поэтому Bearer нужен)
         let isAuthless =
             path.hasPrefix("api/auth/register/") ||
             path.hasPrefix("api/auth/google/") ||
@@ -278,7 +272,6 @@ final class AuthAPI {
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        // auth header (все не-auth эндпоинты как у тебя)
         let isAuthless =
             path.hasPrefix("api/auth/register/") ||
             path.hasPrefix("api/auth/google/")   ||
@@ -353,7 +346,6 @@ extension AuthAPI {
         try await get("api/profile/\(id)/")
     }
 
-    // при желании — частичное обновление
     func patchProfile(id: Int, fields: [String: Any]) async throws {
         struct Empty: Decodable {}
         let _: Empty = try await sendJSON("PATCH", "api/profile/\(id)/", fields)
@@ -444,11 +436,9 @@ enum JWTTools {
     static func userId(from token: String) -> Int? {
         guard let p = payload(token) else { return nil }
 
-        // user_id
         if let id = p["user_id"] as? Int { return id }
         if let s = p["user_id"] as? String, let id = Int(s) { return id }
 
-        // возможные альтернативы
         if let id = p["id"] as? Int { return id }
         if let s = p["id"] as? String, let id = Int(s) { return id }
         if let s = p["sub"] as? String, let id = Int(s) { return id }
@@ -504,13 +494,12 @@ func signInWithGoogleAndRoute(router: OnboardingRouter) {
         }
         Task {
             do {
-                // ВАЖНО: правильный путь
                 let pair = try await AuthAPI.shared.socialGoogle(idToken: idToken)
-                handleAuthSuccess(pair)                      // 👈 внутри парсит user_id из access JWT и кладёт в UserStore
-                CurrentUser.ensureIdFromJWTIfNeeded()        // 👈 лишним не будет, добьёмся консистентности
+                handleAuthSuccess(pair)
+                CurrentUser.ensureIdFromJWTIfNeeded()
                 await MainActor.run { router.replace(with: [.gender]) }
                 UserDefaults.standard.set(true, forKey: AuthFlags.isRegistered)
-                await MainActor.run { router.replace(with: [.gender]) } // сразу в онбординг
+                await MainActor.run { router.replace(with: [.gender]) }
             } catch {
                 print("Google exchange failed:", error)
             }
@@ -529,9 +518,8 @@ extension UIApplication {
 }
 
 extension AuthAPI {
-    // Вариант 1: бэк принимает только id_token
     func socialGoogle(idToken: String) async throws -> TokenPair {
-        try await post("api/auth/google/", ["id_token": idToken])   // 👈 проверь точный путь
+        try await post("api/auth/google/", ["id_token": idToken])
     }
 }
 
@@ -554,18 +542,16 @@ extension AuthAPI {
 
 struct RefreshResponse: Decodable {
     let access: String
-    let refresh: String?      // иногда тоже присылают
+    let refresh: String?
 
     enum CodingKeys: String, CodingKey { case access, refresh, access_token }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
 
-        // Пытаемся прочитать "access", иначе — "access_token"
         access = try c.decodeIfPresent(String.self, forKey: .access)
               ?? c.decode(String.self, forKey: .access_token)
 
-        // Может отсутствовать — тогда nil
         refresh = try c.decodeIfPresent(String.self, forKey: .refresh)
     }
 }
@@ -584,15 +570,11 @@ extension AuthAPI {
 
 
 // Репозиторий, который использует AuthAPI
-// Репо, которое ходит в бэк и держит последний план в памяти
-// Репо, которое ходит в бэк и держит последний план в памяти
-// Репозиторий, который ходит в бэк и держит последний план в памяти
 final class BackendOnboardingRepository: OnboardingRepository {
     private var lastPlan: PersonalPlan?
 
     func submitOnboarding(data: OnboardingData) async throws {
         _ = try await AuthAPI.shared.submitOnboarding(data)
-        // ⛔️ Больше НИЧЕГО здесь не делаем (без авто-запроса плана)
     }
 
     func requestAiPersonalPlan(from data: OnboardingData) async throws {
@@ -625,20 +607,13 @@ final class BackendOnboardingRepository: OnboardingRepository {
             protein: prot,
             fat: fat,
             carbs: carbs,
-            meals: [],        // при желании замапь dto.meals
-            workouts: []      // при желании замапь dto.workouts
+            meals: [],
+            workouts: []
         )
     }
 
     func fetchSavedPlan() -> PersonalPlan? { lastPlan }
 }
-
-
-
-
-
-
-
 
 
 
@@ -718,7 +693,6 @@ extension AppleSignInCoordinator: ASAuthorizationControllerDelegate, ASAuthoriza
     }
 }
 
-// Глобальный инстанс, чтобы не деаллоцировался до коллбэка
 let appleSignInCoordinator = AppleSignInCoordinator()
 
 func signInWithAppleAndRoute(router: OnboardingRouter) {
@@ -730,11 +704,11 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
             Task {
                 do {
                     let pair = try await AuthAPI.shared.socialApple(idToken: payload.idToken, nonce: payload.nonce)
-                    handleAuthSuccess(pair)                      // 👈 внутри парсит user_id из access JWT и кладёт в UserStore
-                    CurrentUser.ensureIdFromJWTIfNeeded()        // 👈 лишним не будет, добьёмся консистентности
+                    handleAuthSuccess(pair)
+                    CurrentUser.ensureIdFromJWTIfNeeded()
                     await MainActor.run { router.replace(with: [.gender]) }
                     UserDefaults.standard.set(true, forKey: AuthFlags.isRegistered)
-                    await MainActor.run { router.replace(with: [.gender]) } // минуя пароль/OTP
+                    await MainActor.run { router.replace(with: [.gender]) }
                 } catch {
                     print("Apple token exchange failed:", error)
                 }
@@ -746,7 +720,6 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
 
 
 //MARK: - handleAuthSuccess
-// Общий хелпер: сохранить токены и пользователя
 private func handleAuthSuccess(_ pair: TokenPair) {
     TokenStore.save(.init(access: pair.access, refresh: pair.refresh))
     if let u = pair.user {
@@ -757,7 +730,6 @@ private func handleAuthSuccess(_ pair: TokenPair) {
     UserDefaults.standard.set(true, forKey: AuthFlags.isRegistered)
 }
 
-// ✅ Google: без прямого роутинга, отдаём управление наверх
 func signInWithGoogle(onAuthSuccess: @escaping () -> Void) {
     guard let root = UIApplication.shared.connectedScenes
         .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })
@@ -772,7 +744,7 @@ func signInWithGoogle(onAuthSuccess: @escaping () -> Void) {
             do {
                 let pair = try await AuthAPI.shared.socialGoogle(idToken: idToken)
                 handleAuthSuccess(pair)
-                await MainActor.run { onAuthSuccess() }     // ← дальше решает вызывающий
+                await MainActor.run { onAuthSuccess() }
             } catch {
                 print("Google exchange failed:", error)
             }
@@ -780,7 +752,6 @@ func signInWithGoogle(onAuthSuccess: @escaping () -> Void) {
     }
 }
 
-// ✅ Apple: аналогично — только колбэк
 func signInWithApple(onAuthSuccess: @escaping () -> Void) {
     appleSignInCoordinator.start { result in
         switch result {
@@ -791,7 +762,7 @@ func signInWithApple(onAuthSuccess: @escaping () -> Void) {
                 do {
                     let pair = try await AuthAPI.shared.socialApple(idToken: payload.idToken, nonce: payload.nonce)
                     handleAuthSuccess(pair)
-                    await MainActor.run { onAuthSuccess() } // ← дальше решает вызывающий
+                    await MainActor.run { onAuthSuccess() }
                 } catch {
                     print("Apple token exchange failed:", error)
                 }
@@ -803,18 +774,15 @@ func signInWithApple(onAuthSuccess: @escaping () -> Void) {
 
 
 
-// ===== В ЭТОМ ЖЕ ФАЙЛЕ, В EXTENSION AuthAPI, ЗАМЕНИ ЭТОТ МЕТОД =====
 extension AuthAPI {
-    // POST /api/profile/onboarding/ — уже правильно
+    // POST /api/profile/onboarding/
     @discardableResult
         func submitOnboarding(_ data: OnboardingData) async throws -> Profile {
             let payload = data.backendPayload()
             print("📤 Onboarding payload -> \(payload)")
 
-            // ⬇️ Декодим именно Profile, не EmptyResponse
             let profile: Profile = try await post("api/profile/onboarding/", payload)
 
-            // ⬇️ Сохраняем profile.id — он нужен для будущих PATCH
             await MainActor.run {
                 UserStore.saveProfileId(profile.id)
                 NotificationCenter.default.post(name: .profileDidChange, object: nil)
@@ -823,8 +791,6 @@ extension AuthAPI {
             return profile
         }
 
-    // БЫЛО: func generatePersonalPlan() async throws { EmptyResponse }
-    // СТАЛО: возвращаем DTO с калориями/БЖУ
     fileprivate func generatePersonalPlan() async throws -> GeneratePlanResponse {
         try await post("api/profile/generate-plan/", [:])
     }
@@ -873,9 +839,6 @@ extension Notification.Name {
 
 //MARK: - PlanGetResponse
 // ===== GET /api/plan/get_plan/ =====
-//MARK: - PlanGetResponse
-// ===== GET /api/plan/get_plan/ =====
-// ===== GET /api/plan/get_plan/ =====
 struct PlanGetResponse: Decodable {
     let dailyCalories: Int
     let proteinG: Int
@@ -901,7 +864,6 @@ struct PlanGetResponse: Decodable {
     }
 }
 
-// ===== POST /api/profile/generate-plan/ (если используешь) =====
 private struct GeneratePlanResponse: Decodable {
     let dailyCalories: Int
     let proteinG: Int
@@ -937,12 +899,10 @@ private struct GeneratePlanResponse: Decodable {
             let c = try d.container(keyedBy: CodingKeys.self)
             day   = try c.decode(String.self, forKey: .day)
             focus = try c.decode(String.self, forKey: .focus)
-            // вариант 1: с скобками у try
 //            durationMin =
 //                (try? c.decode(Int.self, forKey: .duration_min))
 //                ?? (try? c.decode(Int.self, forKey: .duration))
 //                ?? (try  c.decode(Int.self, forKey: .minutes))
-            // вариант 2 (короче): через helper
             durationMin = try c.decodeFirstInt(for: [.duration_min, .duration, .minutes])
         }
     }
@@ -968,9 +928,7 @@ private struct GeneratePlanResponse: Decodable {
 
 
 
-// ===== Общие хелперы для чтения чисел из JSON (Int / Double / String) =====
 private extension KeyedDecodingContainer {
-    /// Пытается прочитать число (Int, Double или числовую строку) и округляет до Int
     func decodeFlexibleInt(forKey key: Key) throws -> Int {
         if let i = try? decode(Int.self, forKey: key) { return i }
         if let d = try? decode(Double.self, forKey: key) { return Int(round(d)) }
@@ -985,7 +943,6 @@ private extension KeyedDecodingContainer {
         )
     }
 
-    /// Ищет первое доступное поле из списка ключей и читает его как Int (гибко)
     func decodeFirstInt(for keys: [Key]) throws -> Int {
         for k in keys where contains(k) {
             return try decodeFlexibleInt(forKey: k)
@@ -1020,7 +977,6 @@ extension AuthAPI {
 
 
 //MARK: - MealCreateDTO
-// AuthAPI.swift
 extension AuthAPI {
     private struct AnalyzeDTO: Decodable {
         struct IngredientDTO: Decodable {
@@ -1183,14 +1139,12 @@ extension AuthAPI {
                 return first.toMeal()
             }
 
-            // Если ничего не подошло — отдадим тело в ошибку
             throw APIError.decoding(String(data: data, encoding: .utf8) ?? "Unknown JSON")
         }
 
         private struct MealWrapper: Decodable { let meal: AnalyzeDTO }
     }
 
-    // используется только в ретрае — если 413
     private func imageDownscaledJPEG(_ image: UIImage, maxDimension: CGFloat, quality: CGFloat) -> Data {
         let w = image.size.width, h = image.size.height
         let scale = min(1, maxDimension / max(w, h))

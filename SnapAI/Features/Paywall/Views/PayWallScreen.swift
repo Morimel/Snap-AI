@@ -11,13 +11,12 @@ import SwiftUI
 struct PayWallScreen: View {
     
     var mode: PaywallMode
-    var onStartTrial: () -> Void     // используется и для ✕, и для "Start for free"
-    var onProceed: () -> Void        // "Pay"
+    var onStartTrial: () -> Void    
+    var onProceed: () -> Void
     
-    // ↑ добавим настройки
-    private let imageYOffset: CGFloat = 124   // минус = выше картинка
-    private let sheetYOffset: CGFloat = -12    // плюс = ниже нижний блок
-    private let extraImageHeight: CGFloat = 200 // запас высоты, чтобы картинка не
+    private let imageYOffset: CGFloat = 124
+    private let sheetYOffset: CGFloat = -12
+    private let extraImageHeight: CGFloat = 200
     private let topRatio: CGFloat = 0.65
     private let bottomRatio: CGFloat = 0.35
     
@@ -37,11 +36,9 @@ struct PayWallScreen: View {
             let bottomH = totalH * bottomRatio + geo.safeAreaInsets.bottom
             
             ZStack {
-                // сплошной фон на весь экран (чтобы под скруглениями ничего не просвечивало)
                 AppColors.background.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // ===== Верхний блок (60%) =====
                     ZStack(alignment: .center) {
                         AppImages.OtherImages.food2
                             .resizable()
@@ -74,9 +71,7 @@ struct PayWallScreen: View {
                     }
                     .frame(height: topH)
                     
-                    // ===== Нижний блок (40%) =====
                     ZStack {
-                        // фон листа со скруглениями и мягкой тенью
                         AppColors.background
                             .clipShape(RoundedCorners(corners: [.topLeft, .topRight], radius: 28))
                             .shadow(color: .black.opacity(0.08), radius: 12, y: 0)
@@ -94,11 +89,10 @@ struct PayWallScreen: View {
                             mode: mode
                         )
                     }
-                    .offset(y: sheetYOffset)        // ← ОПУСТИЛИ «зелёную» часть
+                    .offset(y: sheetYOffset)
                     .frame(height: bottomH)
                 }
             }
-            // КРЕСТИК — собственный оверлей, а не toolbar
             .overlay(alignment: .topTrailing) {
                 if mode.showsClose {
                     Button(action: onStartTrial) {

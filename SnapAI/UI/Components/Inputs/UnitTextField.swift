@@ -9,7 +9,7 @@ import SwiftUI
 
 //MARK: - UnitTextField
 struct UnitTextField: View {
-    @ObservedObject var vm: OnboardingViewModel   // <-- учитываем vm
+    @ObservedObject var vm: OnboardingViewModel   
     let placeholder: String
     @Binding var text: String
     
@@ -28,10 +28,10 @@ struct UnitTextField: View {
         HStack {
             TextField(
                 "", text: $text,
-                prompt: styledPlaceholder(placeholder, color: AppColors.primary.opacity(0.35)) // цвет плейсхолдера
+                prompt: styledPlaceholder(placeholder, color: AppColors.primary.opacity(0.35))
             )
             .keyboardType(.decimalPad)
-            .foregroundStyle(AppColors.primary)                    // цвет ВВЕДЁННОГО текста
+            .foregroundStyle(AppColors.primary)
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
             
@@ -48,7 +48,6 @@ struct UnitTextField: View {
                 .stroke(Color.black.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.2), radius: 8, y: 2)
-        // необязательная фильтрация: оставляем только цифры/точку/запятую
         .onChange(of: text) { v in
             let filtered = v.filter { "0123456789.,".contains($0) }
             if filtered != v { text = filtered }

@@ -27,7 +27,6 @@ struct RateStep: View {
 
     var body: some View {
         ZStack { content }
-            // Оверлей «Submitting…» + логика получения плана и перехода
             .fullScreenCover(isPresented: $showSubmitting) {
                 SubmittingOverlay(
                     title: "Creating your personalized meal\nand workout plan",
@@ -35,7 +34,6 @@ struct RateStep: View {
                     progress: $vm.progress,
                     onCancel: nil
                 )
-                // RateStep: внутри .fullScreenCover task
                 .task {
                     do {
                         await vm.finish()
@@ -59,14 +57,12 @@ struct RateStep: View {
                 }
 
             }
-            // Возврат из App Store → стартуем сабмит
             .onChange(of: scenePhase) { phase in
                 if phase == .active, pendingReviewLaunch {
                     pendingReviewLaunch = false
                     startSubmitting()
                 }
             }
-            // Алёрт на ошибку
             .alert("Ошибка", isPresented: $showError) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -136,7 +132,6 @@ struct RateStep: View {
                     .foregroundStyle(AppColors.primary)
             }
         }
-        // Форма фидбэка при низкой оценке
         .sheet(isPresented: $showFeedbackForm) {
             FeedbackSheet(
                 rating: currentRating,
@@ -161,7 +156,6 @@ struct RateStep: View {
 
     private func rateAndProceed() {
         if currentRating >= 4 {
-            // Откроем App Store и после возврата запустим сабмит
             pendingReviewLaunch = true
             if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
                 openURL(url)
@@ -172,7 +166,6 @@ struct RateStep: View {
                 }
             }
         } else {
-            // Попросим фидбэк и затем сабмит
             showFeedbackForm = true
         }
     }

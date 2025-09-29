@@ -50,16 +50,14 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        // ★ слушатели команд/прерываний
         NotificationCenter.default.addObserver(self, selector: #selector(takePhotoAction),         name: .takePhoto, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(toggleTorchNote(_:)),     name: .toggleTorch, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(pauseCamera),             name: .pauseCamera, object: nil)   // ★
-        NotificationCenter.default.addObserver(self, selector: #selector(resumeCamera),            name: .resumeCamera, object: nil)  // ★
-        NotificationCenter.default.addObserver(self, selector: #selector(sessionWasInterrupted(_:)), name: .AVCaptureSessionWasInterrupted, object: session) // ★
-        NotificationCenter.default.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)), name: .AVCaptureSessionInterruptionEnded, object: session) // ★
-        NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError(_:)), name: .AVCaptureSessionRuntimeError, object: session) // ★
+        NotificationCenter.default.addObserver(self, selector: #selector(pauseCamera),             name: .pauseCamera, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(resumeCamera),            name: .resumeCamera, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionWasInterrupted(_:)), name: .AVCaptureSessionWasInterrupted, object: session)
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)), name: .AVCaptureSessionInterruptionEnded, object: session)
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError(_:)), name: .AVCaptureSessionRuntimeError, object: session)
 
-        // ★ стартуем только при наличии разрешения
         ensureAuthorization { [weak self] granted in
             guard let self, granted else { return }
             self.sessionQueue.async {
@@ -73,7 +71,6 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
         super.viewWillDisappear(animated)
         NotificationCenter.default.removeObserver(self)
 
-        // Сначала скрыть слой превью (UI), потом стоп сессии
         DispatchQueue.main.async {
             self.previewLayer.connection?.isEnabled = false
             self.previewLayer.isHidden = true
@@ -195,21 +192,18 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto,
                      error: Error?) {
-        defer { isCapturing = false }                 // снимок завершён — можно снова
+        defer { isCapturing = false }
         guard error == nil,
               let data = photo.fileDataRepresentation(),
               let image = UIImage(data: data) else { return }
 
-        // 1) Останавливаем сессию на фоновой очереди
         sessionQueue.async {
             if self.session.isRunning { self.session.stopRunning() }
 
-            // 2) Скрываем превью на главном потоке
             DispatchQueue.main.async {
                 self.previewLayer.connection?.isEnabled = false
                 self.previewLayer.isHidden = true
 
-                // 3) И только теперь отдаём фото наружу
                 self.coordinator.capturedImage = image
             }
         }
@@ -229,12 +223,10 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
     }
 
     @objc private func resumeCamera() {
-        // Дебаунс/стабилизация: чуть подождём, чтобы закончились транзишны/оверлеи
         let delay: DispatchTimeInterval = .milliseconds(150)
         sessionQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self = self else { return }
 
-            // Проверку видимости VC и любые обращения к вью — ТОЛЬКО на main
             var canShowPreview = false
             DispatchQueue.main.sync {
                 canShowPreview = self.isViewLoaded && (self.view.window != nil)
@@ -245,7 +237,6 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
             }
             guard canShowPreview else { return }
 
-            // Движок камеры — на sessionQueue
             if !self.session.isRunning {
                 self.session.startRunning()
             }
@@ -254,21 +245,16 @@ final class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegat
 
 
 
-    // MARK: - Interruption / Errors  ★
+    // MARK: - Interruption / Errors
 
     @objc private func sessionWasInterrupted(_ note: Notification) {
-        // напр., входящий звонок / переход в бекграунд
-        // тут можно показать плашку/иконку «Пауза»
-        // print("Session interrupted: \(note.userInfo?[AVCaptureSessionInterruptionReasonKey] ?? "")")
     }
 
     @objc private func sessionInterruptionEnded(_ note: Notification) {
-        // по окончании прерывания можно перезапустить
         resumeCamera()
     }
 
     @objc private func sessionRuntimeError(_ note: Notification) {
-        // попытка мягко восстановить после ошибки
         sessionQueue.async {
             self.session.stopRunning()
             self.session.startRunning()

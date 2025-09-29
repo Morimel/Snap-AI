@@ -17,12 +17,10 @@ struct ThickLinearProgressViewStyle: ProgressViewStyle {
     func makeBody(configuration: Configuration) -> some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                // фон (трек)
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(trackColor)
                     .frame(height: height)
                 
-                // прогресс
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(fillColor)
                     .frame(width: geo.size.width * CGFloat(configuration.fractionCompleted ?? 0),

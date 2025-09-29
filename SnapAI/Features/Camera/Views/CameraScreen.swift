@@ -28,12 +28,12 @@ struct CameraScreen: View {
 
     var body: some View {
         content
-            // КАМЕРА → кроп
+            /// КАМЕРА  кроп
             .onChange(of: bridge.capturedImage) { img in
                 guard let img else { return }
                 cropItem = .init(image: img)
             }
-            // ГАЛЕРЕЯ → кроп
+            /// ГАЛЕРЕЯ  кроп
             .onChange(of: pickerItem) { item in
                 guard let item else { return }
                 Task {
@@ -44,19 +44,19 @@ struct CameraScreen: View {
                     pickerItem = nil
                 }
             }
-            // Пауза/резюм камеры, пока открыт кроп
+            /// Пауза/резюм камеры, пока открыт кроп
             .onChange(of: cropItem) { item in
                 NotificationCenter.default.post(
                     name: item == nil ? .resumeCamera : .pauseCamera, object: nil
                 )
             }
-            // Пауза/резюм на время пикера
+            /// Пауза/резюм на время пикера
             .onChange(of: showPicker) { isShown in
                 NotificationCenter.default.post(
                     name: isShown ? .pauseCamera : .resumeCamera, object: nil
                 )
             }
-            // Лист кропа
+            /// Лист кропа
             .fullScreenCover(item: $cropItem, content: cropSheet)
     }
 
@@ -105,9 +105,8 @@ struct CameraScreen: View {
         VStack {
             Spacer()
             HStack(spacing: 12) {
-                // Галерея (левая половина) — КНОПКА + модификатор .photosPicker
                 Button {
-                    showPicker = true                    // триггер показа пикера
+                    showPicker = true
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "photo.on.rectangle").imageScale(.large)
@@ -120,7 +119,7 @@ struct CameraScreen: View {
                     .contentShape(RoundedRectangle(cornerRadius: 22))
                 }
                 .buttonStyle(.plain)
-                .photosPicker(                         // ← модификатор, а не инициализатор
+                .photosPicker(
                     isPresented: $showPicker,
                     selection: $pickerItem,
                     matching: .images,
@@ -128,7 +127,7 @@ struct CameraScreen: View {
                 )
 
 
-                // Кнопка камеры
+                /// Кнопка камеры
                 Button {
                     NotificationCenter.default.post(name: .takePhoto, object: nil)
                 } label: {

@@ -12,10 +12,9 @@ struct CircleIconButton: View {
     var size: CGFloat = 40
     var iconSize: CGFloat = 18
 
-    // Цвета можно подменить под твои AppColors
     var bg: Color = .white
-    var fg: Color = Color(red: 0.17, green: 0.36, blue: 0.29)        // тёмно-зелёный
-    var ring: Color = Color(red: 0.31, green: 0.56, blue: 0.46).opacity(0.35) // обводка
+    var fg: Color = Color(red: 0.17, green: 0.36, blue: 0.29)
+    var ring: Color = Color(red: 0.31, green: 0.56, blue: 0.46).opacity(0.35)
     var shadow: Color = Color(red: 0.31, green: 0.56, blue: 0.46).opacity(0.25)
 
     var action: () -> Void
@@ -29,12 +28,12 @@ struct CircleIconButton: View {
                 .background(bg, in: Circle())
                 .overlay(
                     Circle()
-                        .stroke(ring, lineWidth: 1) // тонкая зелёная рамка
+                        .stroke(ring, lineWidth: 1)
                 )
-                .shadow(color: shadow, radius: 6, x: 0, y: 2) // мягкая внешняя тень
+                .shadow(color: shadow, radius: 6, x: 0, y: 2)
                 .contentShape(Circle())
         }
-        .buttonStyle(PressScaleStyle(scale: 0.96)) // приятный press-эффект
+        .buttonStyle(PressScaleStyle(scale: 0.96))
         .accessibilityLabel(Text("Back"))
         .padding(.trailing, 32)
     }
@@ -50,8 +49,8 @@ struct PressScaleStyle: ButtonStyle {
 }
 
 struct CircleActionButton<Inner: View>: View {
-    var systemImage: String? = nil     // для простых кейсов
-    @ViewBuilder var inner: () -> Inner    // для кастомного содержимого (спиннер и т.п.)
+    var systemImage: String? = nil
+    @ViewBuilder var inner: () -> Inner
     var action: () -> Void
 
     var size: CGFloat = 68

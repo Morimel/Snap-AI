@@ -8,7 +8,6 @@
 import SwiftUI
 
 //MARK: - CornerHandle
-// Уголки
 struct CornerHandle: View {
     enum Corner { case tl, tr, br, bl }
 
@@ -33,7 +32,7 @@ struct CornerHandle: View {
         Circle().fill(Color.white)
             .frame(width: 24, height: 24)
             .shadow(radius: 2, y: 1)
-            .frame(width: 44, height: 44)  // hit-area
+            .frame(width: 44, height: 44)
             .contentShape(Circle())
             .position(p)
             .gesture(

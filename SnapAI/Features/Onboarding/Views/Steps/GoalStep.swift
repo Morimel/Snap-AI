@@ -12,7 +12,6 @@ struct GoalStep: View {
     @State private var path = NavigationPath()
     @ObservedObject var vm: OnboardingViewModel
 
-    // ✅ инициализируем из VM (или .lose по умолчанию)
     @State private var selected: Goal
     @State private var desiredWeightText: String
     
@@ -58,7 +57,7 @@ struct GoalStep: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
 
-            // картинка по полу
+            /// картинка по полу
             vm.data.genderImage
                 .resizable()
                 .scaledToFit()
@@ -73,14 +72,13 @@ struct GoalStep: View {
 
             Spacer()
 
-            // желаемый вес (юниты берутся из vm.data.unit)
             UnitTextField(vm: vm,
                           placeholder: "Enter your desired weight",
                           text: $desiredWeightText,
                           kind: .weight)
             .padding(.horizontal, 26)
             .onChange(of: desiredWeightText) { v in
-                            // в онбординге можно обновлять live, в picker мы коммитим при Save
+                            
                             if case .onboarding = mode {
                                 vm.data.desiredWeight = v.replacingOccurrences(of: ",", with: ".").doubleValue
                             }
@@ -151,7 +149,6 @@ struct GoalStep: View {
                     }
                 }
         .onAppear {
-            // ✅ фиксируем стартовый выбор в VM, чтобы кнопка была «уже нажатой»
             vm.data.goal = selected
         }
     }
@@ -165,24 +162,23 @@ struct GoalStep: View {
             let txt = desiredWeightText.replacingOccurrences(of: ",", with: ".")
             let val = Double(txt)
             if selected == .maintain {
-                vm.data.desiredWeight = nil   // для maintain целевой вес не обязателен
+                vm.data.desiredWeight = nil
             } else {
                 vm.data.desiredWeight = val
             }
 
             do {
-                try await AuthAPI.shared.updateProfile(from: vm.data) // внутри шлёт Notification.profileDidChange
+                try await AuthAPI.shared.updateProfile(from: vm.data)
 
                 await MainActor.run {
                     saving = false
-                    // haptic
+                    /// haptic
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    // snackbar
+                    /// snackbar
                     snackText = "Saved"
                     withAnimation { showSnack = true }
                 }
 
-                // подождать чуть-чуть, закрыть экран и спрятать snackbar
                 Task {
                     try? await Task.sleep(nanoseconds: 1_600_000_000)
                     await MainActor.run {

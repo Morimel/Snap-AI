@@ -17,7 +17,6 @@ struct RegisterView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
-                // Бэкграунд-картинка
                 AppImages.OtherImages.food1
                     .resizable()
                     .scaledToFill()
@@ -26,18 +25,17 @@ struct RegisterView: View {
                     .offset(y: focalYOffset)
                     .ignoresSafeArea()
                 
-                // НИЖНЯЯ ПАНЕЛЬ
                 VStack(spacing: 16) {
                     
                         Text("Create account")
                             .font(.system(size: 36, weight: .regular))
                             .foregroundColor(AppColors.primary)
-                            .frame(maxWidth: .infinity, minHeight: 56)   // высота строки
+                            .frame(maxWidth: .infinity, minHeight: 56)
                             .overlay(alignment: .leading) {
-                                CircleIconButton { dismiss() }           // кнопка слева
-                                    .frame(width: 44, height: 44)        // удобный тач-таргет
+                                CircleIconButton { dismiss() }
+                                    .frame(width: 44, height: 44)
                             }
-                            .padding(.horizontal, 16)                    // общий отступ блока (опц.)
+                            .padding(.horizontal, 16)
 
                     AuthScreenRegister(onContinue: onContinue)
                 }
@@ -69,13 +67,12 @@ struct AuthScreenRegister: View {
             email.trimmingCharacters(in: .whitespacesAndNewlines)
         }
     
-    // простая проверка e-mail (RFC-лайт)
+    /// простая проверка e-mail (RFC-лайт)
        private func isValidEmail(_ s: String) -> Bool {
            let pattern = #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#
            return NSPredicate(format: "SELF MATCHES[c] %@", pattern).evaluate(with: s)
        }
 
-       // текст ошибки: показываем ТОЛЬКО если поле не пустое
        private var emailError: String? {
            let s = emailTrimmed
            guard !s.isEmpty else { return nil }
@@ -112,7 +109,7 @@ struct AuthScreenRegister: View {
             Button {
                 didAttemptSubmit = true
                 if isFormValid { onContinue(emailTrimmed) }
-            } label: {   // ← вызываем с email
+            } label: {
                             Text("Continue")
                                 .font(.headline)
                                 .foregroundStyle(.white)
@@ -136,7 +133,6 @@ struct AuthScreenRegister: View {
                 signInWithGoogleAndRoute(router: router)
             }
         }
-        // НЕТ собственного фона и ignoresSafeArea здесь
     }
 }
 

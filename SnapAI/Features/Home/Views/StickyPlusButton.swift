@@ -12,12 +12,12 @@ struct StickyPlusButton: View {
     let action: () -> Void
     
     var body: some View {
-        Button(action: action) {                    // 👈 вызываем action()
+        Button(action: action) {                    
             AppImages.ButtonIcons.Plus.lightPlus
                 .resizable()
                 .scaledToFit()
                 .frame(width: 20, height: 20)
-                .padding(.vertical, 18)             // побольше кликабельная зона
+                .padding(.vertical, 18)
         }
         .frame(width: 80, height: 56)
         .background(Capsule().fill(AppColors.secondary))

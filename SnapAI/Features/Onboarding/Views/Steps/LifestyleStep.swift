@@ -16,10 +16,9 @@ struct LifestyleStep: View {
     @State private var selected: Lifestyle
     @State private var currentImage: Image
 
-    // Стартуем с того, что уже в VM (или .sedentary по умолчанию)
     init(vm: OnboardingViewModel) {
         self.vm = vm
-        let initial: Lifestyle = vm.data.lifestyle ?? .sedentary   // если не опционал, оставь: vm.data.lifestyle
+        let initial: Lifestyle = vm.data.lifestyle ?? .sedentary
         _selected     = State(initialValue: initial)
         _currentImage = State(initialValue: LifestyleStep.image(for: initial))
     }
@@ -77,7 +76,7 @@ struct LifestyleStep: View {
                     .padding(.top, 2)
             }
         }
-        .onAppear { vm.data.lifestyle = selected } // фиксируем выбор в модели
+        .onAppear { vm.data.lifestyle = selected }
     }
 
     // MARK: - UI
@@ -97,7 +96,6 @@ struct LifestyleStep: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(isSelected ? .white : AppColors.text)
                 .frame(maxWidth: .infinity, minHeight: 60)
-//                .background(isSelected ? AppColors.secondary : .clear)
                 .background(isSelected ? AppColors.secondary : Color.white.opacity(0.001))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
@@ -107,13 +105,13 @@ struct LifestyleStep: View {
                 .shadow(color: .black.opacity(isSelected ? 0 : 0.15), radius: 3, y: 2)
         }
         .buttonStyle(.plain)
-        .contentShape(RoundedRectangle(cornerRadius: 12))   // ← ВЕСЬ блок теперь тапаемый
+        .contentShape(RoundedRectangle(cornerRadius: 12))
     }
 
 
     private static func image(for lifestyle: Lifestyle) -> Image {
         switch lifestyle {
-        case .sedentary: return AppImages.Activity.sedantary   // ← как у тебя назван ассет
+        case .sedentary: return AppImages.Activity.sedantary
         case .normal:    return AppImages.Activity.normal
         case .active:    return AppImages.Activity.active
         }

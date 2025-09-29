@@ -21,10 +21,10 @@ struct CustomWheelPicker: View {
     @State private var offset: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
 
-    // Haptic
+    /// Haptic
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
-    // MARK: - Init (удобные метки)
+    // MARK: - Init 
     init(items: [String],
          selectedIndex: Binding<Int>,
          columnWidth: CGFloat = 92,
@@ -82,11 +82,9 @@ struct CustomWheelPicker: View {
                 .padding(.all, 4)
             }
         }
-        // начальное выравнивание по внешнему индексу
         .onAppear {
             offset = -CGFloat(selectedIndex) * itemHeight
         }
-        // если индекс поменялся снаружи — скроллимся к нему
         .onChange(of: selectedIndex) { new in
             withAnimation(.easeInOut) {
                 offset = -CGFloat(new) * itemHeight

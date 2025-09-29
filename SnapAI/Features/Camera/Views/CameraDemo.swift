@@ -34,7 +34,7 @@ struct DemoRootView: View {
         }
         .padding()
         .fullScreenCover(isPresented: $showCamera) {
-                    CameraFlow()   // <-- тут весь сценарий (камера -> детали)
+                    CameraFlow()   
                 }
     }
 }

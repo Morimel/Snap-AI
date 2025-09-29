@@ -8,7 +8,6 @@
 import SwiftUI
 
 //MARK: - DimOut
-// затемнение вне полигона (не перехватывает тапы)
 struct DimOut: Shape {
     let quad: Quad
     func path(in r: CGRect) -> Path {

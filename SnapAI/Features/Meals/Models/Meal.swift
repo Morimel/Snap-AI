@@ -14,7 +14,7 @@ struct Meal: Codable {
     var fats: Int = 0
     var carbs: Int = 0
     var servings: Int = 1
-    var benefitScore: Int = 5   // 0…10 на макете "5/10"
+    var benefitScore: Int = 0   
     var ingredients: [Ingredient] = []
 }
 

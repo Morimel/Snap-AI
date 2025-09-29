@@ -14,10 +14,6 @@ struct WeekStrip: View {
 
     private var today: Date { calendar.startOfDay(for: Date()) }
 
-    // текущие 7 дней: сегодня и следующие 6
-//    private var days: [Date] {
-//        (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
-//    }
     private var days: [Date] {
         (-3...3).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
     }
@@ -36,7 +32,6 @@ struct WeekStrip: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            // Заголовок текущего месяца (по выбранному — это всегда сегодня)
             HStack {
                 Text(monthFmt.string(from: today))
                     .font(.largeTitle).fontWeight(.semibold)
@@ -45,7 +40,6 @@ struct WeekStrip: View {
             }
             .padding(.horizontal)
 
-            // Бейджи месяцев для 7-дневного диапазона
             HStack(spacing: 0) {
                 ForEach(days.indices, id: \.self) { i in
                     let d = days[i]
@@ -60,7 +54,6 @@ struct WeekStrip: View {
             }
             .frame(height: 16)
 
-            // Ряд дней
             HStack(spacing: 0) {
                 ForEach(days, id: \.self) { d in
                     let isToday = calendar.isDate(d, inSameDayAs: today)
@@ -72,13 +65,13 @@ struct WeekStrip: View {
                     )
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
-                    .allowsHitTesting(isToday)      // остальные дни не кликабельны
+                    .allowsHitTesting(isToday)
                     .onTapGesture { if isToday { selected = d } }
                 }
             }
         }
         .padding(.horizontal, 12)
         .fixedSize(horizontal: false, vertical: true)
-        .onAppear { selected = today }            // всегда держим выбранным «сегодня»
+        .onAppear { selected = today }
     }
 }

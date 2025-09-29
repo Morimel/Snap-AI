@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// где-нибудь в утилитах
 extension Gender {
     var displayName: String {
         switch self {
@@ -41,7 +40,7 @@ struct OnboardingData: Codable {
     var lifestyle: Lifestyle?
     var goal: Goal?
     var desiredWeight: Double?
-    var rating: Int?             // из экрана Rate
+    var rating: Int?
 }
 
 

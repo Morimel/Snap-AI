@@ -18,9 +18,7 @@ extension OnboardingData {
     var weightUnitLabel: String { unit == .imperial ? "lbs" : "kg" }
 }
 
-// OnboardingData -> словарь под бэк
 extension OnboardingData {
-    // твои методы:
     func backendPayload() -> [String: Any] {
         var out: [String: Any] = [:]
 
@@ -76,7 +74,6 @@ extension OnboardingData {
         }
     }
 
-    // НОВОЕ: заполняем модель данными с бэка
     mutating func fill(from p: Profile) {
         // units
         let unitsStr = (p.units ?? "metric").lowercased()
@@ -101,7 +98,7 @@ extension OnboardingData {
             self.birthDate = df.date(from: dob) ?? ISO8601DateFormatter().date(from: dob)
         }
 
-        // weight / height (бэк хранит в кг/см)
+        // weight / height
         if let kg = p.weight_kg {
             self.weight = (units == .imperial) ? Double(kg) * 2.20462262 : Double(kg)
         }

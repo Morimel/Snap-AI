@@ -17,7 +17,6 @@ struct DateOfBirthStep: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // дефолт ~25 лет назад; подставь свою логику если нужно
     @State private var selectedDate: Date =
         Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
 
@@ -31,8 +30,6 @@ struct DateOfBirthStep: View {
 
             Spacer()
 
-            // Если твой DateWheelPicker поддерживает биндинг – лучше так:
-            // DateWheelPicker(selected: $selectedDate)
             DateWheelPicker(selected: $selectedDate)
             
             Spacer()
@@ -56,9 +53,8 @@ struct DateOfBirthStep: View {
 
             case .picker(let onSelect):
                 Button {
-                    vm.data.birthDate = selectedDate   // ← ОБЯЗАТЕЛЬНО
+                    vm.data.birthDate = selectedDate
                     let ageString = makeAgeString(from: selectedDate)
-                    // при желании ещё и в модель: vm.data.birthDate = selectedDate
                     onSelect(ageString)
                     dismiss()
                 } label: {
@@ -82,7 +78,6 @@ struct DateOfBirthStep: View {
             ToolbarItem(placement: .principal) {
                 switch mode {
                 case .onboarding:
-                    // 🔸 прогресс-бар в онбординге
                     ProgressView(value: 3, total: 5)
                         .progressViewStyle(
                             ThickLinearProgressViewStyle(
@@ -94,7 +89,6 @@ struct DateOfBirthStep: View {
                         .padding(.top, 2)
 
                 case .picker:
-                    // 🔸 обычный заголовок в режиме выбора
                     Text("Select date of birth")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(AppColors.primary)
@@ -102,7 +96,6 @@ struct DateOfBirthStep: View {
             }
         }
         .onAppear {
-            // если дата уже в модели — подхватить:
             if let d = vm.data.birthDate { selectedDate = d }
         }
     }
@@ -124,7 +117,7 @@ private struct DateOfBirthStepPreview: View {
     )
     var body: some View {
         NavigationStack {
-            DateOfBirthStep(vm: vm) // .onboarding по умолчанию
+            DateOfBirthStep(vm: vm)
         }
     }
 }

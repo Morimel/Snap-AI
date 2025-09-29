@@ -12,24 +12,21 @@ struct MainScreen: View {
     
     @ObservedObject var vm: OnboardingViewModel
     
-    @State private var selected = Date() // сегодня
+    @State private var selected = Date() 
     
     var onNext: (() -> Void)? = nil
-    private var p: PersonalPlan? { vm.personalPlan }   // без force unwrap
+    private var p: PersonalPlan? { vm.personalPlan }
 
     
     @State private var showCamera = false
     private struct CropSession: Identifiable { let id = UUID(); let image: UIImage }
     @State private var cropSession: CropSession?
-    @State private var showMealDetail = false           // ← пуш детального экрана
-    @State private var pendingCropped: UIImage?         // обрезанное фото
+    @State private var showMealDetail = false
+    @State private var pendingCropped: UIImage?
     
     var body: some View {
         ScrollView {
             VStack {
-                // пример: неделя, где попадаем на «29 Aug → 4 Sep»
-//                let ref = Calendar.current.date(from: DateComponents(year: 2025, month: 9, day: 29))!
-//                WeekStrip(selected: $selected, reference: ref)
                 WeekStrip(selected: $selected)
                 
                 if let p {
@@ -41,7 +38,6 @@ struct MainScreen: View {
                                         carb:    (0, p.carbs)
                                     )
                                 } else {
-                                    // плейсхолдер, пока грузится
                                     StatisticsCard(
                                         needKcal: 0, spentKcal: 0,
                                         protein: (0, 0), fat: (0, 0), carb: (0, 0)
@@ -76,7 +72,6 @@ struct MainScreen: View {
             }
             
             ToolbarItem(placement: .topBarTrailing) {
-                            // ⬇️ Навигация на SettingsView
                             NavigationLink {
                                 SettingsView(vm: vm)
                             } label: {
@@ -87,21 +82,17 @@ struct MainScreen: View {
                             }
                         }
         }
-        // Камера
         .fullScreenCover(isPresented: $showCamera) {
-            NavigationStack {                           // 👈 добавили
-                CameraScreen { cropped in           // ← уже обрезанное фото
+            NavigationStack {
+                CameraScreen { cropped in
                     pendingCropped = cropped
-                    showCamera = false              // закрываем модалку камеры
-                    // после закрытия — пушим детали
+                    showCamera = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                         showMealDetail = true
                     }
                 }
             }
         }
-        // 3) Пуш в MealDetailScreen
-        // пушим после закрытия модалки
         .navigationDestination(isPresented: $showMealDetail) {
             if let img = pendingCropped {
                 MealDetailScreen(image: img, vm: MealViewModel())
@@ -133,7 +124,6 @@ private struct MainScreen_Preview: View {
 }
 
 
-// OnboardingViewModel.swift
 extension OnboardingViewModel {
     func ensurePlanLoaded() async {
         if personalPlan != nil { return }
@@ -141,7 +131,7 @@ extension OnboardingViewModel {
             let g = try await AuthAPI.shared.getCurrentPlan()
             await MainActor.run {
                 self.personalPlan = PersonalPlan(
-                    weightUnit: "kg",            // при желании возьми из профиля
+                    weightUnit: "kg",
                     maintainWeight: 0,
                     dailyCalories: g.dailyCalories,
                     protein: g.proteinG,

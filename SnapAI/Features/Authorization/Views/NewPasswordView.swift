@@ -8,7 +8,7 @@ import SwiftUI
 
 struct NewPasswordView: View {
     @ObservedObject var vm: OnboardingViewModel
-    let email: String                                 // 👈 добавили
+    let email: String                                
     @EnvironmentObject private var router: OnboardingRouter
     @Environment(\.dismiss) private var dismiss
     @State private var focalYOffset: CGFloat = 0
@@ -71,10 +71,8 @@ struct NewPasswordView: View {
             let resp = try await AuthAPI.shared.registerStart(email: email, password: password)
             lastPasswordForVerify = password
 
-            // НЕ БЛОКИРУЕМ ПЕРЕХОД НА OTP
             router.push(.emailOTP(email: email, sessionId: resp.session_id, password: password))
 
-            // опционально: мягкий лог (или можно показать тост уже на OTP)
             if resp.email_sent != true {
                 print("⚠️ email_sent=false; пользователь сможет нажать Resend. hint:", resp.debug_hint ?? "—")
             }

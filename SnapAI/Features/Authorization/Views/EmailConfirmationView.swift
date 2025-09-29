@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Combine
-import UIKit   // для haptic
+import UIKit
 
 // MARK: - Keyboard listener (минимальный)
 final class KeyboardObserver: ObservableObject {
@@ -24,8 +24,6 @@ final class KeyboardObserver: ObservableObject {
             .sink { [weak self] note in
                 guard let self else { return }
                 let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .zero
-                // если клавы нет — высота 0
-                // если есть — берём её высоту
                 if end.minY >= UIScreen.main.bounds.height { self.height = 0 }
                 else { self.height = end.height }
             }
@@ -46,7 +44,7 @@ private struct OTPDigit: View {
     }
 }
 
-// Геометрический эффект "shake"
+/// Эффект "shake"
 struct ShakeEffect: GeometryEffect {
     var amount: CGFloat = 12
     var shakesPerUnit: CGFloat = 3
@@ -58,7 +56,7 @@ struct ShakeEffect: GeometryEffect {
     }
 }
 
-// MARK: - Экран подтверждения
+// MARK: - EmailConfirmationView
 struct EmailConfirmationView: View {
     @ObservedObject var vm: OnboardingViewModel
     @AppStorage(AuthFlags.isRegistered) private var isRegistered = false
@@ -68,29 +66,25 @@ struct EmailConfirmationView: View {
     let passwordForVerify: String
     
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var router: OnboardingRouter   // ← пушим .newPassword отсюда
+    @EnvironmentObject private var router: OnboardingRouter
     @StateObject private var kb = KeyboardObserver()
     
-    // 4 ячейки (визуал)
     @State private var d0 = ""
     @State private var d1 = ""
     @State private var d2 = ""
     @State private var d3 = ""
     
-    // скрытое поле + фокус
     @State private var otpText = ""
     @FocusState private var otpFocused: Bool
     
     let slot: CGFloat = 44
     
-    // shake-триггер
     @State private var shakePhase: CGFloat = 0
     @State private var didRoute = false
     @State private var isLoading = false
     @State private var errorText: String?
     
-    // resend-cooldown
-    @State private var cooldownRemaining: Int = 0      // в секундах
+    @State private var cooldownRemaining: Int = 0      
     @State private var cooldownTimer: Timer?
     @State private var isResending = false
     
@@ -118,21 +112,19 @@ struct EmailConfirmationView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     
                     HStack(spacing: 0) {
-                        // слева — кнопка
                         CircleIconButton { dismiss() }
                             .frame(width: slot, height: slot)
                         
                         Spacer(minLength: 0)
                         
-                        // справа — пустой балансир той же ширины
                         Color.clear.frame(width: slot, height: slot)
                     }
-                    .overlay {                                   // заголовок поверх, центрирован
+                    .overlay {
                         Text("E-mail Confirmation")
                             .font(.system(size: 28, weight: .regular))
                             .foregroundColor(AppColors.primary)
                             .lineLimit(1)
-                            .truncationMode(.middle)               // или .middle, если хочешь
+                            .truncationMode(.middle)
                             .frame(maxWidth: .infinity)
                     }
                     .padding(.horizontal, 16)
@@ -148,7 +140,6 @@ struct EmailConfirmationView: View {
                             .foregroundStyle(AppColors.text)
                     }
                     
-                    // Ячейки кода + shake
                     HStack(spacing: 16) {
                         OTPDigit(char: d0)
                         OTPDigit(char: d1)
@@ -159,16 +150,16 @@ struct EmailConfirmationView: View {
                     .onTapGesture { otpFocused = true }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 6)
-                    .modifier(ShakeEffect(animatableData: shakePhase)) // ← тряска
+                    .modifier(ShakeEffect(animatableData: shakePhase)) /// тряска
                     
-                    // Скрытое поле
+                    /// Скрытое поле
                     TextField("", text: Binding(
                         get: { otpText },
                         set: { new in
                             let filtered = new.filter(\.isNumber).prefix(4)
                             otpText = String(filtered)
                             
-                            // разбрасываем по визуальным ячейкам
+                            /// разбрасываем по визуальным ячейкам
                             let chars = Array(otpText)
                             d0 = chars.indices.contains(0) ? String(chars[0]) : ""
                             d1 = chars.indices.contains(1) ? String(chars[1]) : ""
@@ -182,7 +173,7 @@ struct EmailConfirmationView: View {
                         }
                     ))
                     .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)    // оставим так, чтобы не плодить логи
+                    .textContentType(.oneTimeCode)
                     .focused($otpFocused)
                     .frame(width: 1, height: 1)
                     .opacity(0.05)
@@ -244,7 +235,7 @@ struct EmailConfirmationView: View {
     
     private func handleFilledCode() {
         guard !isLoading, !didRoute else { return }
-        isLoading = true                // ← ставим флаг сразу
+        isLoading = true
         Task { await verify() }
     }
 
@@ -252,7 +243,7 @@ struct EmailConfirmationView: View {
     @MainActor
     private func verify() async {
         errorText = nil
-        defer { isLoading = false }     // сбросим только если была ошибка
+        defer { isLoading = false }    
 
         do {
             let pair = try await AuthAPI.shared.verify(

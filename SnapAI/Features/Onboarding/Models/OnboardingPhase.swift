@@ -10,10 +10,10 @@ import SwiftUI
 // MARK: - Этапы онбординга
 
 enum OnboardingPhase: Equatable {
-    case goal       // экран выбора цели
-    case rate       // экран Rate
-    case submitting // показываем крутилку и шлём данные
-    case ready      // получили план — идём на «экран два»
+    case goal       
+    case rate
+    case submitting
+    case ready
     case failed(String)
 }
 

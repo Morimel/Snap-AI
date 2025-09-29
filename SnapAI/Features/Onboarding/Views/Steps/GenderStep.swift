@@ -70,8 +70,7 @@ struct GenderStep: View {
 
             case .picker(let onSelect):
                 Button {
-                    // коммитим выбор только при нажатии Choose
-                    onSelect(selected)   // в PersonalDataView ты уже делаешь vm.data.gender = g
+                    onSelect(selected)   
                     dismiss()
                 } label: {
                     Text("Choose")
@@ -116,7 +115,6 @@ struct GenderStep: View {
             }
         }
         .onAppear {
-            // в онбординге — можно сразу коммитить initial
             if case .onboarding = mode {
                 vm.data.gender = selected
             }
@@ -131,7 +129,6 @@ struct GenderStep: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 selected = gender
                 currentImage = GenderStep.image(for: gender)
-                // ВАЖНО: не пишем в vm.data.gender в .picker, чтобы не было «отката»
                 if case .onboarding = mode {
                     vm.data.gender = gender
                 }

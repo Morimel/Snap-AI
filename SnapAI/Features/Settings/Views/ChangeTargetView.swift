@@ -17,7 +17,6 @@ struct ChangeTargetView: View {
     
     let onSave: (Int, Int, Int, Int) async -> Void
     
-    // 🔹 общий фокус для всех полей
     @FocusState private var focusedField: Field?
     
     enum Field: Hashable { case calories, proteins, carbs, fats }
@@ -80,7 +79,6 @@ struct ChangeTargetView: View {
             }
             .padding(.vertical, 20)
             
-            // твоя кнопка Edit…
             Spacer()
         }
         .hideKeyboardOnTap()

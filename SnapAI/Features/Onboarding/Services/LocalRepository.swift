@@ -8,7 +8,6 @@
 import SwiftUI
 
 //MARK: - LocalRepository
-// Локальный репозиторий — для работы без бэка (моки/семплы). Можно удалить, если не нужен.
 final class LocalRepository: OnboardingRepository {
     private let planKey = "snapai.personalPlan.v1"
     private let onboardingKey = "snapai.onboarding.v1"
@@ -20,7 +19,6 @@ final class LocalRepository: OnboardingRepository {
     }
 
     func requestAiPersonalPlan(from data: OnboardingData) async throws {
-        // эмуляция «запроса в ChatGPT» (задержка + генерация семпла)
         try await Task.sleep(nanoseconds: 1_000_000_000)
         let base = 2200
         let delta = (data.goal == .lose ? -300 : data.goal == .gain ? +300 : 0)

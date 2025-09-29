@@ -129,12 +129,12 @@ struct PlanScreen: View {
             .background(AppColors.background.ignoresSafeArea())
             .animation(
                 .easeInOut(duration: 0.2),
-                value: [current.dailyCalories, current.protein, current.carbs, current.fat] // Equatable ключ
+                value: [current.dailyCalories, current.protein, current.carbs, current.fat] 
             )
             .safeAreaInset(edge: .bottom) {
                 StickyCTA(title: "Next") {
-                    hasOnboarded = true          // выходим из онбординга
-                    paywall.presentInitial()     // глобально показать paywall (с крестиком)
+                    hasOnboarded = true
+                    paywall.presentInitial()
                 }
             }
             .navigationDestination(isPresented: $showChangeTarget) {
@@ -154,7 +154,6 @@ struct PlanScreen: View {
             }
             
         
-        // как только онбординг завершён — закрываем себя (fullScreenCover от RateStep)
                 .onChange(of: hasOnboarded) { new in
                     if new { dismiss() }
                 }

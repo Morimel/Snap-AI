@@ -17,20 +17,18 @@ struct SnapAIApp: App {
             RootContainer()
                 .environmentObject(paywall)
                 .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)   // возврат из Google
+                    GIDSignIn.sharedInstance.handle(url)   /// возврат из Google
                 }
                 .task {
-                    // настройка Google
+                    /// настройка Google
                     GIDSignIn.sharedInstance.configuration = GIDConfiguration(
                         clientID: "476536036663-4oq1juohef5l7o9knhb5vhlu11nojucn.apps.googleusercontent.com"
                     )
                 }
                 .task {
-                    // если уже есть токены — пометим как зарегистрирован
                     if TokenStore.load() != nil {
                         UserDefaults.standard.set(true, forKey: AuthFlags.isRegistered)
                     }
-                    // подстрахуем: вытащим user_id из access JWT (для SettingsView)
                     CurrentUser.ensureIdFromJWTIfNeeded()
                 }
         }
@@ -38,7 +36,6 @@ struct SnapAIApp: App {
 }
 
 private struct RootContainer: View {
-    // онбординг завершён?
     @AppStorage("hasOnboarded") private var hasOnboarded = false
 
     @Environment(\.scenePhase) private var scenePhase
@@ -49,12 +46,10 @@ private struct RootContainer: View {
     @State private var showPaywall = false
     @State private var path = NavigationPath()
 
-    // Подписка/триал
     @AppStorage("isSubscribed") private var isSubscribed = false
     @AppStorage("trialStartTS") private var trialStartTS: Double = 0
     private let trialLength: TimeInterval = 7 * 24 * 3600
 
-    // ВАЖНО: создаём VM с BackendOnboardingRepository
     @StateObject private var vm: OnboardingViewModel
 
     init() {
@@ -62,14 +57,13 @@ private struct RootContainer: View {
             wrappedValue: OnboardingViewModel(
                 repository: BackendOnboardingRepository(),
                 onFinished: {
-                    // флипнем онбординг-флаг через UserDefaults (чтобы не заморачиваться со self в init)
                     UserDefaults.standard.set(true, forKey: "hasOnboarded")
                 }
             )
         )
     }
 
-    // paywall-хелперы
+    /// paywall-хелперы
     private var isTrialActive: Bool {
         guard trialStartTS > 0 else { return false }
         return Date().timeIntervalSince1970 - trialStartTS < trialLength
@@ -84,7 +78,7 @@ private struct RootContainer: View {
         showPaywall = false
     }
     private func proceedPurchase() {
-        // TODO: реальная покупка; пока — мокаем
+        // TODO: реальная покупка
         isSubscribed = true
         showPaywall = false
     }
@@ -93,11 +87,9 @@ private struct RootContainer: View {
         ZStack {
             if hasOnboarded {
                 NavigationStack {
-                    // Если MainScreen ждёт vm — передаём ту же VM
                     MainScreen(vm: vm)
                 }
             } else {
-                // Передаём эту же VM в онбординг
                 OnboardingFlow(vm: vm, onFinish: {
                     hasOnboarded = true
                 })
@@ -110,7 +102,6 @@ private struct RootContainer: View {
                     .statusBarHidden(true)
             }
         }
-        // показ paywall-а централизованно
         .fullScreenCover(isPresented: $paywallPresented) {
             PayWallScreen(
                 mode: paywall.mode,
@@ -129,13 +120,11 @@ private struct RootContainer: View {
             withAnimation(.easeOut(duration: 0.35)) { showSplash = false }
         }
         .task {
-            // если хочешь автологику показа paywall
             refreshPaywallPresentation()
         }
     }
 }
 
-// Маршрутизатор для локального просмотра плана (не обязателен, но оставлю)
 struct PlanHostView: View {
     @State private var plan: PersonalPlan?
     private let repo = LocalRepository()

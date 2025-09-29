@@ -34,12 +34,10 @@ struct MacroBar: View {
                         .fill(Color.black.opacity(0.06))
                         .frame(height: barHeight)
                     
-                    // заполнение
                     Capsule()
                         .fill(gradient)
                         .frame(width: geo.size.width * fraction, height: barHeight)
                     
-                    // «ползунок»-индикатор
                     Circle()
                         .fill(.white)
                         .overlay(

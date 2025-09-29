@@ -44,7 +44,7 @@ struct MeetingScreen: View {
                         .multilineTextAlignment(.center)
                         .foregroundColor(AppColors.text)
                     
-                    // LOGIN
+                    /// LOGIN
                     NavigationLink(value: OnbRoute.login) {
                         Text("Login")
                             .font(.headline)
@@ -55,7 +55,7 @@ struct MeetingScreen: View {
                     }
                     .buttonStyle(.plain)
                     
-                    // REGISTER
+                    /// REGISTER
                     NavigationLink(value: OnbRoute.register) {
                         Text("Create account")
                             .font(.headline)

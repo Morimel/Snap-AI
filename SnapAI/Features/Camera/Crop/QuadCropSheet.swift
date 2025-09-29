@@ -85,9 +85,6 @@ struct QuadCropSheet: View {
                 }
             }
         }
-        // Внутри QuadCropSheet
-        // Панель внизу поверх всего
-        // ↓ замени весь .overlay(alignment: .bottom) на это
         .overlay(alignment: .bottom) {
             HStack(spacing: 28) {
                 CircleActionButton(systemImage: "arrow.counterclockwise") {
@@ -176,11 +173,11 @@ struct QuadCropSheet: View {
                                  imageRectInView: CGRect) -> UIImage {
         guard let cg = image.cgImage else { return image }
         
-        // 1) Поворачиваем CIImage к той ориентации, как он показан на экране
+        /// 1) Поворачиваем CIImage к той ориентации, как он показан на экране
         let exif = CGImagePropertyOrientation(image.imageOrientation)
         let oriented = CIImage(cgImage: cg).oriented(exif)
         
-        // 2) Скейлим координаты из view-space в пиксели oriented CI
+        /// 2) Скейлим координаты из view-space в пиксели oriented CI
         let ciW = oriented.extent.width
         let ciH = oriented.extent.height
         let sx = ciW / imageRectInView.width
@@ -199,7 +196,7 @@ struct QuadCropSheet: View {
         let yMin = min(p1.y, p2.y)
         let yMax = max(p1.y, p2.y)
         
-        // 3) Переводим в систему координат CI (origin снизу-слева)
+        /// 3) Переводим в систему координат CI (origin снизу-слева)
         let cropCI = CGRect(
             x: floor(xMin),
             y: floor(ciH - yMax),
@@ -209,7 +206,7 @@ struct QuadCropSheet: View {
         
         guard cropCI.width > 0, cropCI.height > 0 else { return image }
         
-        // 4) Режем ориентированный CI и собираем UIImage c .up
+        /// 4) Режем ориентированный CI и собираем UIImage c .up
         let ctx = CIContext()
         guard let outCG = ctx.createCGImage(oriented.cropped(to: cropCI), from: cropCI) else { return image }
         return UIImage(cgImage: outCG, scale: image.scale, orientation: .up)
@@ -219,7 +216,7 @@ struct QuadCropSheet: View {
 
 #Preview {
     QuadCropSheet(
-        image: .previewCropImage,   // плейсхолдер ниже
+        image: .previewCropImage,
         initialQuad: nil,
         onRetake: {},
         onUse: { _ in }
@@ -233,11 +230,11 @@ private extension UIImage {
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let cg = ctx.cgContext
             
-            // фон
+            /// фон
             cg.setFillColor(UIColor.darkGray.cgColor)
             cg.fill(CGRect(origin: .zero, size: size))
             
-            // «лист бумаги»
+            /// «лист бумаги»
             let doc = CGRect(x: 220, y: 140, width: 760, height: 520)
             cg.setFillColor(UIColor.white.cgColor)
             let path = UIBezierPath(roundedRect: doc, cornerRadius: 16)

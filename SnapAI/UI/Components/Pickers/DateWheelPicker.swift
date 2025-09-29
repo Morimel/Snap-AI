@@ -10,19 +10,16 @@ import SwiftUI
 struct DateWheelPicker: View {
     @Binding var selected: Date
     
-    // текущее состояние (индексы)
     @State private var month: Int
     @State private var day: Int
     @State private var year: Int
 
-    // данные
     private let months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     private let startYear = 1940
     private let years: [Int]
     
     @State private var dayStrings: [String]
 
-    // стартовый год в твоём диапазоне
 
     init(selected: Binding<Date>) {
             _selected = selected
@@ -48,7 +45,7 @@ struct DateWheelPicker: View {
 
     var body: some View {
         HStack(spacing: 20) {
-            // MONTH
+            /// MONTH
                         CustomWheelPicker(
                             items: months,
                             selectedIndex: $month,
@@ -56,7 +53,7 @@ struct DateWheelPicker: View {
                         )
                         .tint(AppColors.primary)
 
-            // DAY
+            /// DAY
                         CustomWheelPicker(
                             items: dayStrings,
                             selectedIndex: $day,
@@ -64,7 +61,7 @@ struct DateWheelPicker: View {
                         )
                         .tint(AppColors.primary)
 
-            // YEAR
+            /// YEAR
                         CustomWheelPicker(
                             items: years.map { "\($0)" },
                             selectedIndex: $year,

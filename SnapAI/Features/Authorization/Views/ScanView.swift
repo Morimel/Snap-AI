@@ -1,20 +1,15 @@
 import SwiftUI
 
-/// Рамка из MyIcon + вертикальный light sweep, который появляется раз в N секунд
 struct FocusSquare: View {
     var size: CGFloat = 260
     var lineWidth: CGFloat = 8
     var color: Color = .white
 
-    // область, куда ездит блик (немного меньше рамки)
     var innerInset: CGFloat = 14
     var innerCornerRadius: CGFloat = 22
 
-    /// длительность одного прохода блика
     var sweepPeriod: Double = 1.6
-    /// период между стартами проходов (раз в сколько секунд «появляется» анимация)
     var triggerInterval: Double = 3.0
-    /// относительная толщина световой полосы
     var sweepThickness: CGFloat = 0.45
 
     @State private var sweepPhase: CGFloat = -1.2
@@ -22,13 +17,11 @@ struct FocusSquare: View {
 
     var body: some View {
         ZStack {
-            // Рамка уголками
             MyIcon()
                 .fill(color)
                 .frame(width: size, height: size)
                 .allowsHitTesting(false)
 
-            // Блик внутри
             sweep
                 .frame(
                     width: size - innerInset * 2,
@@ -52,33 +45,28 @@ struct FocusSquare: View {
         animTask?.cancel()
         animTask = Task {
             while !Task.isCancelled {
-                // сбросим полосу наверх, вне экрана
                 await MainActor.run { sweepPhase = -1.2 }
 
-                // запустим проезд
                 await MainActor.run {
                     withAnimation(.linear(duration: sweepPeriod)) {
                         sweepPhase = 1.2
                     }
                 }
 
-                // подождём, пока проезд завершится
                 try? await Task.sleep(nanoseconds: UInt64(sweepPeriod * 1_000_000_000))
 
-                // пауза до следующего запуска (если период меньше sweepPeriod, паузы не будет)
                 let rest = max(0, triggerInterval - sweepPeriod)
                 try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000))
             }
         }
     }
 
-    // Вертикальная «полоса света», проезжающая сверху вниз
     private var sweep: some View {
         GeometryReader { geo in
             let w = geo.size.width
             let h = geo.size.height
             let bandH = h * sweepThickness
-            let travel = h + bandH // чтобы полоса полностью входила/выходила
+            let travel = h + bandH
 
             Rectangle()
                 .fill(

@@ -8,7 +8,6 @@
 import SwiftUI
 
 //MARK: - MealViewModel
-// MealViewModel.swift
 @MainActor
 final class MealViewModel: ObservableObject {
     @Published var meal = Meal()

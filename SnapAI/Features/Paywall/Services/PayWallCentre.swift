@@ -9,8 +9,8 @@
 import SwiftUI
 
 enum PaywallMode {
-    case trialOffer          // стартовый paywall: с крестиком, "Start for free", с текстом trial
-    case lockedAfterTrial    // «заблокировано»: без крестика, "Pay", без текста trial
+    case trialOffer          
+    case lockedAfterTrial
 
     var ctaTitle: String {
         switch self {
@@ -34,46 +34,37 @@ final class PaywallCenter: ObservableObject {
             static let lockAtTS   = "pay.lockAtTS.v2"
         }
     
-    // Флаг оплаты (твой "hasPayed")
     @AppStorage("hasPayed") var hasPayed: Bool = false
 
-    // Когда должен «сработать» возврат paywall-а в locked-режиме
     @AppStorage("paywallLockAtTS") private var lockAtTS: Double = 0
 
-    // Управление показом
     @Published var isShowing: Bool = false
     private var forcedMode: PaywallMode? = nil
     private var oneShotTimer: Timer?
     
     var mode: PaywallMode {
         if let forcedMode { return forcedMode }
-        // не оплачен и grace не запускали → trial
         if !hasPayed && lockAtTS == 0 { return .trialOffer }
-        // иначе locked
         return .lockedAfterTrial
     }
 
-    // Открыть стартовый paywall (по кнопке Next)
     func presentInitial() {
-            // если уже оплачен — вообще не показываем
             guard !hasPayed else { return }
             forcedMode = .trialOffer
             isShowing = true
         }
     
-       // Открыть сразу locked (используем из Login)
        func presentLocked() {
            guard !hasPayed else { return }
            forcedMode = .lockedAfterTrial
            isShowing = true
        }
 
-    // Нажали ✕ или "Start for free" → закрываем и ставим таймер на 1 мин
     func startGraceMinuteAndClose() {
         guard !hasPayed else { isShowing = false; forcedMode = nil; return }
         forcedMode = nil
-        scheduleLockdown(in: 60)   // 60 сек
-        isShowing = false          // уйти на экран под ним (Main / онбординг)
+        scheduleLockdown(in: 60)
+        isShowing = false
     }
 
     // Оплата (заглушка)
@@ -86,7 +77,6 @@ final class PaywallCenter: ObservableObject {
         forcedMode = nil
     }
 
-    // Проверка при возврате в актив (или по таймеру)
     func triggerLockdownIfNeeded() {
             guard !hasPayed, lockAtTS > 0 else { return }
             let now = Date().timeIntervalSince1970
@@ -96,7 +86,6 @@ final class PaywallCenter: ObservableObject {
             }
         }
 
-    // Звать из scenePhase == .active
     func onBecameActive() {
             triggerLockdownIfNeeded()
             if !hasPayed, lockAtTS > 0 {

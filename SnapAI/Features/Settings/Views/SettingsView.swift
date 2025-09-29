@@ -11,7 +11,6 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var vm: OnboardingViewModel
     
-    // Данные для примера; подмени своими
     @State private var gender = "—"
     @State private var age = "—"
     @State private var height = "—"
@@ -77,9 +76,8 @@ struct SettingsView: View {
                             if loading { ProgressView().controlSize(.large) }
                         }
                         
-                        // Personalization > SectionCard
                         NavigationLink {
-                            GoalStep(vm: vm, mode: .picker)   // ← picker-режим
+                            GoalStep(vm: vm, mode: .picker)
                                 .navigationTitle("Change goal")
                                 .navigationBarTitleDisplayMode(.inline)
                         } label: {
@@ -169,12 +167,12 @@ struct SettingsView: View {
         }
         .task {
             await loadProfile()
-            await loadPlan()       // ⬅️ грузим план сразу после профиля
+            await loadPlan()
         }
         .onReceive(NotificationCenter.default.publisher(for: .profileDidChange)) { _ in
             Task {
                 await loadProfile()
-                await loadPlan()   // ⬅️ и тут тоже обновляем план
+                await loadPlan()
             }
         }
 

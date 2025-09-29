@@ -35,10 +35,10 @@ struct FoodCardView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)                 // ← важнее, чем картинка
+            .layoutPriority(1)                
 
             
-            CircleImage(image: image, diameter: 92)   // ← фиксируем размер
+            CircleImage(image: image, diameter: 92)
                 .frame(width: 92, height: 92)
 
         }
@@ -70,10 +70,10 @@ struct MetricPillCard: View {
                 .font(.caption.bold())
                 .foregroundStyle(AppColors.primary)
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false) // ← не сжимать в ширину
-                .minimumScaleFactor(0.9)                       // (на всякий случай)
+                .fixedSize(horizontal: true, vertical: false)
+                .minimumScaleFactor(0.9)
         }
-        .layoutPriority(1)                                     // ← держим место
+        .layoutPriority(1)
     }
 }
 
@@ -87,13 +87,13 @@ struct CircleImage: View {
             .resizable()
             .interpolation(.high)
             .antialiased(true)
-            .scaledToFill()                      // центр-кроп
+            .scaledToFill()
             .frame(width: diameter, height: diameter)
-            .background(                         // фон, если фото узкое/высокое
+            .background(
                 Circle().fill(Color.black)
             )
-            .clipShape(Circle())                 // делаем круг
-            .overlay(                            // тонкий контур (необязательно)
+            .clipShape(Circle())
+            .overlay(
                 Circle().stroke(.white.opacity(0.10), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.15), radius: 12, y: 6)

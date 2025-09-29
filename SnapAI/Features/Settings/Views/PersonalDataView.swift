@@ -15,7 +15,7 @@ struct PersonalDataView: View {
     @Binding var height: String
     @Binding var weight: String
     
-    @Environment(\.dismiss) private var dismiss   // 👈 добавили
+    @Environment(\.dismiss) private var dismiss
     
     @State private var activeEditor: Editor?
     @State private var goGenderPicker = false
@@ -56,15 +56,13 @@ struct PersonalDataView: View {
                             }
                         )
                     } label: {
-                        LabeledPillRow(label: "Gender", value: gender)   // ⬅️ без action
+                        LabeledPillRow(label: "Gender", value: gender)
                     }
-                    // ⬇️ Age -> DateOfBirthStep
                     NavigationLink {
                         DateOfBirthStep(
                             vm: vm,
                             mode: .picker { ageString in
                                 age = ageString
-                                // при желании: vm.data.ageYears = ...
                             }
                         )
                         .navigationTitle("Date of birth")
@@ -74,8 +72,6 @@ struct PersonalDataView: View {
                     }
                     
                     
-                    // ⬇️ Height -> WeightHeightStep
-                    // ⬇️ объединённая строка
                     NavigationLink {
                         WeightHeightStep(
                             vm: vm,
@@ -110,9 +106,8 @@ struct PersonalDataView: View {
         }
 
         .toolbar {
-            // ЛЕВАЯ КНОПКА НАЗАД
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: { dismiss() }) {    // 👈 pop текущего экрана
+                Button(action: { dismiss() }) {
                     AppImages.ButtonIcons.arrowRight
                         .resizable()
                         .scaledToFill()
@@ -124,7 +119,6 @@ struct PersonalDataView: View {
                 .buttonStyle(.plain)
             }
             
-            // ЗАГОЛОВОК ПО ЦЕНТРУ
             ToolbarItem(placement: .principal) {
                 Text("Personal data")
                     .font(.system(size: 22, weight: .semibold))
@@ -142,7 +136,7 @@ struct PersonalDataView: View {
             guard !didInitialPreload else { return }
             didInitialPreload = true
             await preload()
-        }   // ⬅️ грузим с бэка при входе
+        }
         .onReceive(NotificationCenter.default.publisher(for: .profileDidChange)) { _ in
             Task { await preload() }
         }
@@ -159,10 +153,9 @@ struct PersonalDataView: View {
         do {
             let p = try await AuthAPI.shared.getProfile(id: id)
             await MainActor.run {
-                UserStore.saveProfileId(p.id)        // 👈 СОХРАНИЛИ profile.id
+                UserStore.saveProfileId(p.id)
                 vm.data.fill(from: p)
                 
-                // Обновляем отображаемые строки
                 gender = (p.gender ?? "—").capitalized
                 age    = ageString(from: p.date_of_birth)
                 height = displayHeight(cm: p.height_cm, units: p.units)
@@ -201,10 +194,9 @@ struct PersonalDataView: View {
                 age = "\(max(0, years)) years old"
             }
 
-            // ⬇️ snackbar + haptic
             await MainActor.run {
                 saving = false
-                UINotificationFeedbackGenerator().notificationOccurred(.success) // haptic
+                UINotificationFeedbackGenerator().notificationOccurred(.success) /// haptic
                 snackText = "Saved"
                 withAnimation { showSnack = true }
             }

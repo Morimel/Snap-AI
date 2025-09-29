@@ -30,7 +30,7 @@ struct CameraFlow: View {
 
             case .detail(let img):
                 MealDetailScreen(image: img, vm: vm)
-                    .toolbar {            // кнопка закрытия шита
+                    .toolbar {            
                         ToolbarItem(placement: .topBarLeading) {
                             Button {
                                 dismiss()

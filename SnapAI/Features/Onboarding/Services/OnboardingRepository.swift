@@ -11,7 +11,6 @@ import SwiftUI
 protocol OnboardingRepository {
     func submitOnboarding(data: OnboardingData) async throws
     func requestAiPersonalPlan(from data: OnboardingData) async throws
-    /// Опционально: если репозиторий что-то сохранил локально — вернём план.
     func fetchSavedPlan() -> PersonalPlan?
 }
 

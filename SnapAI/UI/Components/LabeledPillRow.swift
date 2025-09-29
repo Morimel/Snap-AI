@@ -7,11 +7,11 @@
 
 import SwiftUI
 
-// MARK: - Reusable row (как у тебя)
+// MARK: - Reusable row 
 struct LabeledPillRow: View {
     let label: String
     let value: String
-    var action: (() -> Void)? = nil   // ⬅️ стало опциональным
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,7 +39,7 @@ struct LabeledPillRow: View {
                 Button(action: action) { rowContent }
                     .buttonStyle(.plain)
             } else {
-                rowContent   // ⬅️ без кнопки
+                rowContent
             }
         }
         .padding(.vertical, 2)

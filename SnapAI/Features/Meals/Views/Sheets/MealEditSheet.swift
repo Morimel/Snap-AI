@@ -82,10 +82,10 @@ struct MealEditSheet: View {
     
     // MARK: - Plus Capsule
     struct PlusCapsuleButton: View {
-        var width: CGFloat? = 140      // nil → «естественная» ширина; можно потом .frame(maxWidth: .infinity)
+        var width: CGFloat? = 140     
         var height: CGFloat = 56
         var iconSize: CGFloat = 18
-        var radius: CGFloat? = nil     // если не задан, возьмём height/2
+        var radius: CGFloat? = nil
         var action: () -> Void
 
         private var corner: CGFloat { radius ?? height / 2 }
@@ -96,9 +96,9 @@ struct MealEditSheet: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: iconSize, height: iconSize)   // ← размер иконки
+                    .frame(width: iconSize, height: iconSize)
                     .foregroundStyle(AppColors.primary)
-                    .frame(width: width, height: height)        // ← размер кнопки/хит-эрии
+                    .frame(width: width, height: height)
             }
             .buttonStyle(.plain)
             .background(

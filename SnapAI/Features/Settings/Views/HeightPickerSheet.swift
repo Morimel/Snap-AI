@@ -62,7 +62,6 @@ struct HeightPickerSheet: View {
     }
 
     private func parse(_ s: String) -> (feet: Int, inches: Int) {
-        // ожидаем формат вида 5'9"
         let digits = s.split(whereSeparator: { !"0123456789".contains($0) }).compactMap { Int($0) }
         let f = digits.first ?? 5
         let i = digits.dropFirst().first ?? 9

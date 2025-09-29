@@ -13,11 +13,9 @@ struct StickyCTA: View {
     let action: () -> Void
 
     var body: some View {
-        // фон области инсета + сама кнопка
         ZStack {
-            // фон «под кнопкой», как на скрине
             Color(.white)
-                .overlay(Divider().opacity(0.0), alignment: .top) // тонкая разделительная линия (optional)
+                .overlay(Divider().opacity(0.0), alignment: .top)
 
             Button(action: action) {
                 Text(title)
@@ -30,7 +28,7 @@ struct StickyCTA: View {
             .padding(.horizontal, 20)
         }
         .ignoresSafeArea(edges: .bottom)
-        .frame(height: 88)// держим до самого края
+        .frame(height: 88)
     }
 }
 

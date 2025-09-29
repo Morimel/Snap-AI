@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-// MARK: - ViewModel (фазовая, объединённая)
+// MARK: - ViewModel 
 @MainActor
 final class OnboardingViewModel: ObservableObject {
     @Published var data = OnboardingData()
     @Published var phase: OnboardingPhase = .goal
-    @Published var personalPlan: PersonalPlan? // для следующего экрана
+    @Published var personalPlan: PersonalPlan?
     @Published var progress: Double = 0.0
     
     private var isFinishing = false
@@ -25,12 +25,10 @@ final class OnboardingViewModel: ObservableObject {
         self.onFinished = onFinished
     }
 
-    /// Сохранение черновика — безопасно вызывает submit в фоне.
     func saveDraft() {
         Task { try? await repository.submitOnboarding(data: data) }
     }
 
-    /// Единая финализация: сохранить + запросить план
     func finish() async {
         guard !isFinishing else { return }
                 isFinishing = true
@@ -39,20 +37,16 @@ final class OnboardingViewModel: ObservableObject {
             phase = .submitting
             withAnimation(.easeInOut(duration: 0.2)) { progress = 0.05 }
 
-            // мелкий «тиковый» прогресс на время запроса к ИИ
             var ticker: Task<Void, Never>?
 
             do {
-                // 1) «Сохранение в БД»
                 try await repository.submitOnboarding(data: data)
-                print("📤 SUBMIT payload:", data.backendPayload()) // ← лог на всякий
+                print("📤 SUBMIT payload:", data.backendPayload())
                 withAnimation(.easeInOut(duration: 0.25)) { progress = 0.35 }
 
-                // 2) «Запрос в ChatGPT» (+ ожидание ответа)
-                // пока ждём — плавно подрасти до ~0.9, чтобы ощущалось «живым»
                 ticker = Task { @MainActor in
                     while !Task.isCancelled && progress < 0.9 {
-                        try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                        try? await Task.sleep(nanoseconds: 50_000_000)
                         progress = min(progress + 0.02, 0.9)
                     }
                 }
@@ -77,10 +71,8 @@ final class OnboardingViewModel: ObservableObject {
                     calories: calories, proteinG: proteins, fatG: fats, carbsG: carbs
                 )
 
-                // подтягиваем актуальные значения с бэка
                 let g = try await AuthAPI.shared.getCurrentPlan()
 
-                // обновляем локальную модель (чтобы PlanScreen перерисовался)
                 if let old = self.personalPlan {
                     self.personalPlan = PersonalPlan(
                         weightUnit: old.weightUnit,

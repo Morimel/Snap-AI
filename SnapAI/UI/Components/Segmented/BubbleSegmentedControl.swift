@@ -39,7 +39,6 @@ struct BubbleSegmentedControl: View {
                 .frame(maxWidth: .infinity)
                 .font(.system(size: 16, weight: isSelected ? .bold : .regular))
                 .foregroundColor(isSelected ? .white : AppColors.text)
-            // в исходнике minHeight = 24 — подгоним относительно общей высоты
                 .frame(maxWidth: .infinity, minHeight: height - 20)
                 .background(isSelected ? AppColors.primary : Color.clear)
                 .clipShape(Capsule())

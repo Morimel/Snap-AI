@@ -5,7 +5,6 @@
 //  Created by Isa Melsov on 27/9/25.
 //
 
-// Что возвращает generate-plan (имена ключей гибкие)
 private struct GeneratePlanResponse: Decodable {
     let dailyCalories: Int
     let proteinG: Int
@@ -31,13 +30,13 @@ private struct GeneratePlanResponse: Decodable {
         } else {
             throw DecodingError.dataCorrupted(.init(codingPath: c.codingPath, debugDescription: "No calories"))
         }
-        // белки
+        /// белки
         proteinG = try c.decodeIfPresent(Int.self, forKey: .protein_g)
                 ?? c.decode(Int.self, forKey: .protein)
-        // жиры
+        /// жиры
         fatG     = try c.decodeIfPresent(Int.self, forKey: .fat_g)
                 ?? c.decode(Int.self, forKey: .fat)
-        // угли
+        /// угли
         carbsG   = try c.decodeIfPresent(Int.self, forKey: .carbs_g)
                 ?? c.decode(Int.self, forKey: .carbs)
     }
@@ -46,10 +45,6 @@ private struct GeneratePlanResponse: Decodable {
 private struct EmptyResponse: Decodable {}
 
 extension AuthAPI {
-    // уже есть:
-    // func submitOnboarding(_ data: OnboardingData) ...
-
-    // POST /api/profile/generate-plan/ → калории/БЖУ
     func generatePlan() async throws -> GeneratePlanResponse {
         try await post("api/profile/generate-plan/", [:])
     }

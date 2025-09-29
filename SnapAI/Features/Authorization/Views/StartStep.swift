@@ -104,30 +104,25 @@ struct NutrientChip: View {
     }
 }
 
-// MARK: - Composition (как на макете)
+// MARK: - Composition 
 struct NutrientChipsCluster: View {
     var body: some View {
         ZStack {
-            // размеры холста под картинку из примера
             Color.clear
 
-            // P 50 g (белки)
             NutrientChip(initial: "P", valueText: "50 g", circleColor: AppColors.customBlue)
                 .offset(x: -90, y: -160)
 
-            // F 32 g (жиры)
             NutrientChip(initial: "F", valueText: "32 g", circleColor: AppColors.customGreen)
                 .offset(x: 88, y: -24)
 
-            // C 150 g (углеводы) — буква в кружке тёмная, как в примере
             NutrientChip(initial: "C", valueText: "150 g", circleColor: AppColors.customOrange)
                 .offset(x: -86, y: 28)
 
-            // K 241 kcal (калории)
             NutrientChip(initial: "K", valueText: "241 kcal", circleColor: AppColors.customRed)
                 .offset(x: 76, y: 164)
         }
-        .frame(width: 194, height: 252) // под размер рефа
+        .frame(width: 194, height: 252)
     }
 }
 

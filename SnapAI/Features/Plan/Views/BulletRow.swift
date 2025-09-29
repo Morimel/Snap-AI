@@ -16,9 +16,8 @@ struct BulletRow: View {
             Text("•")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(AppColors.primary)
-                .padding(.top, 2) // чуть опустить, чтобы по базовой линии красиво
+                .padding(.top, 2) 
 
-            // текст с переносами и ровным отступом
             Text(text)
                 .font(.system(size: 15))
                 .foregroundStyle(AppColors.primary)

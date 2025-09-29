@@ -11,7 +11,7 @@ import SwiftUI
 struct SubmittingOverlay: View {
     let title: String
     let subtitle: String?
-    @Binding var progress: Double          // 👈 привязываем прогресс 0...1
+    @Binding var progress: Double
     var onCancel: (() -> Void)?
     
     var body: some View {
@@ -19,7 +19,6 @@ struct SubmittingOverlay: View {
             AppColors.background.opacity(0.98).ignoresSafeArea()
             
             VStack(spacing: 24) {
-                // ⬇️ твой кастомный круговой прогресс
                 ZStack {
                     Circle()
                         .stroke(lineWidth: 24)
@@ -63,7 +62,6 @@ struct SubmittingOverlay: View {
                         .padding()
                 }
                 
-                // подписи
                 Text(title)
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(AppColors.primary)

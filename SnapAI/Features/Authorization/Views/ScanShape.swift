@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// твоя фигура-уголки уже есть:
 struct MyIcon: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()

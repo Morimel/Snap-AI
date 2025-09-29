@@ -11,7 +11,7 @@ struct LoginView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var vm: OnboardingViewModel
     @EnvironmentObject private var paywall: PaywallCenter
-    var onSuccess: () -> Void                 // ← добавили
+    var onSuccess: () -> Void                 
 
     @State private var focalYOffset: CGFloat = 0
 
@@ -30,22 +30,21 @@ struct LoginView: View {
                         Text("Log in")
                             .font(.system(size: 36, weight: .regular))
                             .foregroundColor(AppColors.primary)
-                            .frame(maxWidth: .infinity, minHeight: 56)   // высота строки
+                            .frame(maxWidth: .infinity, minHeight: 56)
                             .overlay(alignment: .leading) {
-                                CircleIconButton { dismiss() }           // кнопка слева
-                                    .frame(width: 44, height: 44)        // удобный тач-таргет
+                                CircleIconButton { dismiss() }
+                                    .frame(width: 44, height: 44)
                             }
-                            .padding(.horizontal, 16)                    // общий отступ блока (опц.)
+                            .padding(.horizontal, 16)
 
                     AuthScreenLogin(onContinue: {
                         if paywall.hasPayed {
                             onSuccess()
                         } else {
-                            paywall.presentLocked()      // сразу locked-экран без крестика
+                            paywall.presentLocked()
                         }
 
                             })
-                    // если на paywall нажали Pay (заглушка), идём дальше
                             .onChange(of: paywall.hasPayed) { paid in
                                 if paid { onSuccess() }
                             }
@@ -94,13 +93,11 @@ struct LabeledInput: View {
     @Binding var text: String
     var isSecure: Bool = false
 
-    // 🔻 Новые параметры для ошибок
     var isInvalid: Bool = false
     var errorText: String? = nil
 
     var focused: FocusState<Bool>.Binding? = nil
 
-    // локальный стейт для «глаза»
     @State private var reveal = false
 
     var body: some View {
@@ -110,7 +107,6 @@ struct LabeledInput: View {
                 .foregroundStyle(.secondary)
 
             ZStack {
-                // Основное поле
                 Group {
                     if isSecure && !reveal {
                         SecureField("",
@@ -133,13 +129,11 @@ struct LabeledInput: View {
                             .pillFieldStyle()
                     }
                 }
-                // Красный бордер при ошибке
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .stroke(isInvalid ? Color.red : Color.clear, lineWidth: 1.5)
                 )
 
-                // «Глаз» справа (только для isSecure)
                 .overlay(alignment: .trailing) {
                     if isSecure {
                         Button {
@@ -158,7 +152,6 @@ struct LabeledInput: View {
                 }
             }
 
-            // Текст ошибки
             if let errorText, isInvalid {
                 Text(errorText)
                     .font(.footnote)
@@ -238,7 +231,7 @@ struct AuthScreenLogin: View {
             !emailTrimmed.isEmpty && !isValidEmail(emailTrimmed) && (didAttempt || !emailFocused)
         }
         private var showPasswordError: Bool {
-            !password.isEmpty && (password.count < 1) && (didAttempt || !passwordFocused) // при желании ужесточь
+            !password.isEmpty && (password.count < 1) && (didAttempt || !passwordFocused)
         }
 
         private var isFormValid: Bool { isEmailValid && isPasswordValid }
@@ -258,13 +251,12 @@ struct AuthScreenLogin: View {
                     if let u = pair.user {
                                     UserStore.save(id: u.id, email: u.email)
                                 } else {
-                                    // fallback: вытащим id/email из access JWT
                                     if let id = JWTTools.userId(from: pair.access) {
                                         UserStore.save(id: id, email: JWTTools.email(from: pair.access))
                                     }
                                 }
-                    isRegistered = true                      // 🔑 зарегистрирован
-                    await MainActor.run { onContinue() }     // родитель (LoginView) решит про paywall
+                    isRegistered = true
+                    await MainActor.run { onContinue() }
                 } catch let APIError.validation(map) {
                     await MainActor.run {
                         formError = map.values.first?.first ?? "Invalid e-mail or password."
@@ -330,14 +322,13 @@ struct AuthScreenLogin: View {
             .padding(.vertical, 6)
             
             SocialButton(title: "Continue with Apple", systemImage: "apple.logo") {
-                signInWithApple(onAuthSuccess: onContinue)  // ⬅️ теперь одинаково с e-mail
+                signInWithApple(onAuthSuccess: onContinue)
             }
             SocialButton(title: "Continue with Google", systemImage: "g.circle.fill") {
                 signInWithGoogle(onAuthSuccess: onContinue)
             }
 
         }
-        // НЕТ собственного фона и ignoresSafeArea здесь
     }
 }
 

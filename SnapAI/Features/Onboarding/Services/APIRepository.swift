@@ -8,10 +8,9 @@
 import SwiftUI
 
 //MARK: - APIRepository
-// Прод. репозиторий — для бэка (подставишь baseURL и токен)
 struct APIRepository: OnboardingRepository {
     let baseURL: URL
-    let authToken: String   // JWT из вашего логина; храните в Keychain
+    let authToken: String
 
     private func request<T: Encodable>(_ path: String, json body: T) async throws {
         var req = URLRequest(url: baseURL.appendingPathComponent(path))
@@ -27,11 +26,10 @@ struct APIRepository: OnboardingRepository {
     }
 
     func submitOnboarding(data: OnboardingData) async throws {
-        try await request("/onboarding", json: data)          // ← ваш будущий эндпойнт
+        try await request("/onboarding", json: data)
     }
 
     func requestAiPersonalPlan(from data: OnboardingData) async throws {
-        // через прокси к OpenAI на бэкенде (не с устройства)
-        try await request("/ai/personal-plan", json: data)    // ← ваш будущий эндпойнт
+        try await request("/ai/personal-plan", json: data)
     }
 }

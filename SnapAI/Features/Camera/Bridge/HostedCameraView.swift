@@ -15,7 +15,7 @@ struct HostedCameraView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: CameraViewController, context: Context) {
-        // намеренно пусто — фонарь переключаем только через NotificationCenter
+       
     }
 }
 

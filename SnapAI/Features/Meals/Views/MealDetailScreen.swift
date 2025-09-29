@@ -12,7 +12,7 @@ struct MealDetailScreen: View {
     let image: UIImage
     @ObservedObject var vm: MealViewModel
     @State private var showEditor = false
-    @State private var apiKey: String = "<YOUR_OPENAI_KEY>"   // замени хранением в Keychain
+    @State private var apiKey: String = "<YOUR_OPENAI_KEY>"   
     @Environment(\.dismiss) private var dismiss
     @State private var servings = 1
     var onClose: (() -> Void)? = nil
@@ -20,7 +20,7 @@ struct MealDetailScreen: View {
     @FocusState private var focusedField: Field?
     private enum Field: Hashable { case servings }
     
-    private let chromeOpacity: Double = 0.6   // нужная прозрачность
+    private let chromeOpacity: Double = 0.6   /// нужная прозрачность
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -34,7 +34,7 @@ struct MealDetailScreen: View {
                     VStack(alignment: .leading, spacing: 16) {
                         TextField("Meal name", text: Binding(
                             get: { vm.meal.title },
-                            set: { _ in }   // read-only в просмотре
+                            set: { _ in }   /// read-only в просмотре
                         ))
                         .disabled(true)
                         .padding()
@@ -46,7 +46,7 @@ struct MealDetailScreen: View {
                         }
                         .shadow(color: AppColors.primary.opacity(0.4), radius: 12, x: 0, y: 4)
 
-                        // Сетка метрик
+                        /// Сетка метрик
                         LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 14) {
                             MetricPill(title: "Callories", value: "\(vm.meal.calories) kcal")
                             StepperPill(
@@ -75,7 +75,6 @@ struct MealDetailScreen: View {
                         
                         
 
-                        // Кнопка Edit — максимально «самодостаточная»
                         Button {
                             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true }
                         } label: {
@@ -124,14 +123,12 @@ struct MealDetailScreen: View {
                         IngredientList(ingredients: Binding(
                             get: { vm.meal.ingredients },
                             set: { newValue in
-                                // важно: переустанавливаем весь Meal, чтобы @Published точно сработал
                                 var m = vm.meal
                                 m.ingredients = newValue
                                 vm.meal = m
                             }
                         ))
 
-                        // Кнопка Edit — максимально «самодостаточная»
                         Button {
                             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true }
                         } label: {
@@ -181,7 +178,7 @@ struct MealDetailScreen: View {
                                         .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
                                 )
                         )
-                        .offset(y: -40)   // опционально: на 1pt вверх, чтобы не было «волосинки»
+                        .offset(y: -40)
                         .padding(.bottom, 12)
                 }
             }
@@ -198,14 +195,12 @@ struct MealDetailScreen: View {
             
         }
         .navigationDestination(isPresented: $showEditor) {
-            // Бриджим sheet-стиль в push-навигатор.
             MealEditSheet(
                 vm: vm,
                 isPresented: Binding(
-                    get: { true },                     // экран открыт, пока мы на нём
+                    get: { true },
                     set: { newVal in
                         if newVal == false {
-                            // Пользователь нажал "Close" внутри редактора → поп назад
                             showEditor = false
                         }
                     }
@@ -217,7 +212,7 @@ struct MealDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 CircleIconButton {
-                                    onClose?()               // 👈 вместо dismiss()
+                                    onClose?()
                                 }
                     .foregroundStyle(.black)
                     .opacity(chromeOpacity)
@@ -237,7 +232,7 @@ struct MealDetailScreen: View {
         .ignoresSafeArea()
         .task {
             if vm.meal.title.isEmpty {
-                await vm.scan(image: image)   // теперь бэкенд
+                await vm.scan(image: image)
             }
         }
         .alert("Error", isPresented: Binding(get: { vm.error != nil }, set: { _ in vm.error = nil })) {
@@ -279,9 +274,7 @@ private struct IngredientRow: View {
     var body: some View {
         HStack(spacing: 12) {
 
-            // Пилюля с названием и калориями
             HStack {
-                // если нужно редактирование — оставь TextField
                 Text(ing.name)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(AppColors.primary)
@@ -300,7 +293,6 @@ private struct IngredientRow: View {
                     .stroke(Color.black.opacity(0.08), lineWidth: 1)
             )
             .overlay(
-                // лёгкий «глянец», как в макете
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(
                         LinearGradient(colors: [.white.opacity(0.6), .clear],
@@ -313,7 +305,6 @@ private struct IngredientRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .shadow(color: .black.opacity(0.06), radius: 4, y: 0)
 
-            // Кнопка удаления — отдельный кружок
             Button(action: onDelete) {
                 Image(systemName: "xmark")
                     .font(.system(size: 18, weight: .semibold))
@@ -366,13 +357,12 @@ extension Meal {
 extension MealViewModel {
     static var preview: MealViewModel {
         let vm = MealViewModel()
-        vm.meal = .preview        // title не пустой → scan() не вызовется
+        vm.meal = .preview
         vm.isScanning = false
         return vm
     }
 }
 
-// запасная картинка на случай, если "food1" нет в ассетах
 extension UIImage {
     static var previewPlaceholder: UIImage {
         let size = CGSize(width: 800, height: 600)
