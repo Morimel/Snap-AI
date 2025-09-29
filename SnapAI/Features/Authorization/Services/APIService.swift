@@ -586,34 +586,55 @@ extension AuthAPI {
 // Репозиторий, который использует AuthAPI
 // Репо, которое ходит в бэк и держит последний план в памяти
 // Репо, которое ходит в бэк и держит последний план в памяти
+// Репозиторий, который ходит в бэк и держит последний план в памяти
 final class BackendOnboardingRepository: OnboardingRepository {
     private var lastPlan: PersonalPlan?
 
     func submitOnboarding(data: OnboardingData) async throws {
-        // сохраняем профиль
         _ = try await AuthAPI.shared.submitOnboarding(data)
-        // сразу подтягиваем план по только что сохранённым данным
-        try await requestAiPersonalPlan(from: data)
+        // ⛔️ Больше НИЧЕГО здесь не делаем (без авто-запроса плана)
     }
 
     func requestAiPersonalPlan(from data: OnboardingData) async throws {
-        let dto = try await AuthAPI.shared.getCurrentPlan()
+        // 1) Явно генерим план через POST
+        let dto = try await AuthAPI.shared.generatePersonalPlan()
 
+        // 2) Если на бэке генерация асинхронная и вернулись нули — короткий polling GET
+        var daily = dto.dailyCalories
+        var prot  = dto.proteinG
+        var fat   = dto.fatG
+        var carbs = dto.carbsG
+
+        if daily == 0 && prot == 0 && fat == 0 && carbs == 0 {
+            for _ in 0..<5 {
+                try await Task.sleep(nanoseconds: 600_000_000) // 0.6s
+                let g = try await AuthAPI.shared.getCurrentPlan()
+                if g.dailyCalories > 0 || g.proteinG > 0 || g.fatG > 0 || g.carbsG > 0 {
+                    daily = g.dailyCalories; prot = g.proteinG; fat = g.fatG; carbs = g.carbsG
+                    break
+                }
+            }
+        }
+
+        // 3) Собираем доменную модель
         let unitLabel = (data.unit == .imperial) ? "lbs" : "kg"
         lastPlan = PersonalPlan(
             weightUnit: unitLabel,
             maintainWeight: 0,
-            dailyCalories: dto.dailyCalories,
-            protein: dto.proteinG,
-            fat: dto.fatG,
-            carbs: dto.carbsG,
-            meals: [],        // GET может не прислать
-            workouts: []      // GET может не прислать
+            dailyCalories: daily,
+            protein: prot,
+            fat: fat,
+            carbs: carbs,
+            meals: [],        // при желании замапь dto.meals
+            workouts: []      // при желании замапь dto.workouts
         )
     }
 
     func fetchSavedPlan() -> PersonalPlan? { lastPlan }
 }
+
+
+
 
 
 
@@ -810,87 +831,6 @@ extension AuthAPI {
 }
 
 
-
-
-
-
-
-
-
-
-// Гибкий парсер ответа /api/profile/generate-plan/
-private struct GeneratePlanResponse: Decodable {
-    let dailyCalories: Int
-    let proteinG: Int
-    let fatG: Int
-    let carbsG: Int
-    let meals: [MealDTO]?
-    let workouts: [WorkoutDTO]?
-
-    struct MealDTO: Decodable {
-        let time: String
-        let title: String
-        let kcal: Int
-        enum CodingKeys: String, CodingKey { case time, title, kcal, calories }
-        init(from d: Decoder) throws {
-            let c = try d.container(keyedBy: CodingKeys.self)
-            time  = try c.decode(String.self, forKey: .time)
-            title = try c.decode(String.self, forKey: .title)
-            kcal  = try c.decodeIfPresent(Int.self, forKey: .kcal)
-                 ?? c.decode(Int.self, forKey: .calories)
-        }
-    }
-
-    struct WorkoutDTO: Decodable {
-        let day: String
-        let focus: String
-        let durationMin: Int
-        enum CodingKeys: String, CodingKey { case day, focus, duration_min, duration, minutes }
-        init(from d: Decoder) throws {
-            let c = try d.container(keyedBy: CodingKeys.self)
-            day = try c.decode(String.self, forKey: .day)
-            focus = try c.decode(String.self, forKey: .focus)
-            durationMin = try c.decodeIfPresent(Int.self, forKey: .duration_min)
-                       ?? c.decodeIfPresent(Int.self, forKey: .duration)
-                       ?? c.decode(Int.self, forKey: .minutes)
-        }
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case daily_calories, daily_kcal, calories
-        case protein_g, protein
-        case fat_g, fat, fats
-        case carbs_g, carbs, carbohydrates
-        case meals, workouts
-    }
-
-    init(from d: Decoder) throws {
-        let c = try d.container(keyedBy: CodingKeys.self)
-
-        // Калории
-        if let v = try c.decodeIfPresent(Int.self, forKey: .daily_calories) { dailyCalories = v }
-        else if let v = try c.decodeIfPresent(Int.self, forKey: .daily_kcal) { dailyCalories = v }
-        else if let v = try c.decodeIfPresent(Int.self, forKey: .calories) { dailyCalories = v }
-        else { throw DecodingError.dataCorrupted(.init(codingPath: c.codingPath, debugDescription: "No calories field")) }
-
-        // Белки/жиры/угли
-        proteinG = try c.decodeIfPresent(Int.self, forKey: .protein_g) ?? c.decode(Int.self, forKey: .protein)
-        fatG     = try c.decodeIfPresent(Int.self, forKey: .fat_g)
-                ?? c.decodeIfPresent(Int.self, forKey: .fat)
-                ?? c.decode(Int.self, forKey: .fats)
-        carbsG   = try c.decodeIfPresent(Int.self, forKey: .carbs_g)
-                ?? c.decodeIfPresent(Int.self, forKey: .carbs)
-                ?? c.decode(Int.self, forKey: .carbohydrates)
-
-        meals    = try c.decodeIfPresent([MealDTO].self, forKey: .meals)
-        workouts = try c.decodeIfPresent([WorkoutDTO].self, forKey: .workouts)
-    }
-}
-
-
-
-
-
 //MARK: - updateProfile
 extension AuthAPI {
     func updateProfile(from data: OnboardingData) async throws {
@@ -932,8 +872,11 @@ extension Notification.Name {
 
 
 //MARK: - PlanGetResponse
-// Ответ /api/plan/get_plan/
-private struct PlanGetResponse: Decodable {
+// ===== GET /api/plan/get_plan/ =====
+//MARK: - PlanGetResponse
+// ===== GET /api/plan/get_plan/ =====
+// ===== GET /api/plan/get_plan/ =====
+struct PlanGetResponse: Decodable {
     let dailyCalories: Int
     let proteinG: Int
     let fatG: Int
@@ -943,30 +886,320 @@ private struct PlanGetResponse: Decodable {
     enum CodingKeys: String, CodingKey {
         case daily_calories, daily_kcal, calories
         case protein_g, protein
-        case fat_g, fat
-        case carbs_g, carbs
+        case fat_g, fat, fats
+        case carbs_g, carbs, carbohydrates
         case generated_at
     }
 
-    init(from d: Decoder) throws {
-        let c = try d.container(keyedBy: CodingKeys.self)
-        if let v = try c.decodeIfPresent(Int.self, forKey: .daily_calories) { dailyCalories = v }
-        else if let v = try c.decodeIfPresent(Int.self, forKey: .daily_kcal) { dailyCalories = v }
-        else { dailyCalories = try c.decode(Int.self, forKey: .calories) }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        dailyCalories = try c.decodeFirstInt(for: [.daily_calories, .daily_kcal, .calories])
+        proteinG      = try c.decodeFirstInt(for: [.protein_g, .protein])
+        fatG          = try c.decodeFirstInt(for: [.fat_g, .fat, .fats])
+        carbsG        = try c.decodeFirstInt(for: [.carbs_g, .carbs, .carbohydrates])
+        generatedAt   = try c.decodeIfPresent(String.self, forKey: .generated_at)
+    }
+}
 
-        proteinG = try c.decodeIfPresent(Int.self, forKey: .protein_g)
-                ?? c.decode(Int.self, forKey: .protein)
-        fatG     = try c.decodeIfPresent(Int.self, forKey: .fat_g)
-                ?? c.decode(Int.self, forKey: .fat)
-        carbsG   = try c.decodeIfPresent(Int.self, forKey: .carbs_g)
-                ?? c.decode(Int.self, forKey: .carbs)
+// ===== POST /api/profile/generate-plan/ (если используешь) =====
+private struct GeneratePlanResponse: Decodable {
+    let dailyCalories: Int
+    let proteinG: Int
+    let fatG: Int
+    let carbsG: Int
+    let meals: [MealDTO]?
+    let workouts: [WorkoutDTO]?
 
-        generatedAt = try c.decodeIfPresent(String.self, forKey: .generated_at)
+    struct MealDTO: Decodable {
+        let time: String
+        let title: String
+        let kcal: Int
+
+        enum CodingKeys: String, CodingKey { case time, title, kcal, calories }
+
+        init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            time  = try c.decode(String.self, forKey: .time)
+            title = try c.decode(String.self, forKey: .title)
+            kcal  = try c.decodeFirstInt(for: [.kcal, .calories])
+        }
+    }
+
+
+    struct WorkoutDTO: Decodable {
+        let day: String
+        let focus: String
+        let durationMin: Int
+
+        enum CodingKeys: String, CodingKey { case day, focus, duration_min, duration, minutes }
+
+        init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            day   = try c.decode(String.self, forKey: .day)
+            focus = try c.decode(String.self, forKey: .focus)
+            // вариант 1: с скобками у try
+//            durationMin =
+//                (try? c.decode(Int.self, forKey: .duration_min))
+//                ?? (try? c.decode(Int.self, forKey: .duration))
+//                ?? (try  c.decode(Int.self, forKey: .minutes))
+            // вариант 2 (короче): через helper
+            durationMin = try c.decodeFirstInt(for: [.duration_min, .duration, .minutes])
+        }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case daily_calories, daily_kcal, calories
+        case protein_g, protein
+        case fat_g, fat, fats
+        case carbs_g, carbs, carbohydrates
+        case meals, workouts
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        dailyCalories = try c.decodeFirstInt(for: [.daily_calories, .daily_kcal, .calories])
+        proteinG      = try c.decodeFirstInt(for: [.protein_g, .protein])
+        fatG          = try c.decodeFirstInt(for: [.fat_g, .fat, .fats])
+        carbsG        = try c.decodeFirstInt(for: [.carbs_g, .carbs, .carbohydrates])
+        meals         = try c.decodeIfPresent([MealDTO].self, forKey: .meals)
+        workouts      = try c.decodeIfPresent([WorkoutDTO].self, forKey: .workouts)
+    }
+}
+
+
+
+// ===== Общие хелперы для чтения чисел из JSON (Int / Double / String) =====
+private extension KeyedDecodingContainer {
+    /// Пытается прочитать число (Int, Double или числовую строку) и округляет до Int
+    func decodeFlexibleInt(forKey key: Key) throws -> Int {
+        if let i = try? decode(Int.self, forKey: key) { return i }
+        if let d = try? decode(Double.self, forKey: key) { return Int(round(d)) }
+        if let s = try? decode(String.self, forKey: key) {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let d = Double(t.replacingOccurrences(of: ",", with: ".")) { return Int(round(d)) }
+        }
+        throw DecodingError.typeMismatch(
+            Int.self,
+            .init(codingPath: codingPath + [key],
+                  debugDescription: "Value is not Int/Double/numeric String")
+        )
+    }
+
+    /// Ищет первое доступное поле из списка ключей и читает его как Int (гибко)
+    func decodeFirstInt(for keys: [Key]) throws -> Int {
+        for k in keys where contains(k) {
+            return try decodeFlexibleInt(forKey: k)
+        }
+        throw DecodingError.keyNotFound(
+            keys.first!,
+            .init(codingPath: codingPath, debugDescription: "None of keys present: \(keys)")
+        )
     }
 }
 
 extension AuthAPI {
-    fileprivate func getCurrentPlan() async throws -> PlanGetResponse {
+     func getCurrentPlan() async throws -> PlanGetResponse {
         try await get("api/plan/get_plan/")
     }
 }
+
+
+
+extension AuthAPI {
+    // PATCH /api/plan/patch_plan/
+    func patchPlan(calories: Int, proteinG: Int, fatG: Int, carbsG: Int) async throws {
+        struct Empty: Decodable {}
+        let _: Empty = try await sendJSON("PATCH", "api/plan/patch_plan/", [
+            "calories":  calories,
+            "protein_g": proteinG,
+            "fat_g":     fatG,
+            "carbs_g":   carbsG
+        ])
+    }
+}
+
+
+//MARK: - MealCreateDTO
+// AuthAPI.swift
+extension AuthAPI {
+    private struct AnalyzeDTO: Decodable {
+        struct IngredientDTO: Decodable {
+            let name: String
+            let kcal: Int?
+
+            enum CodingKeys: String, CodingKey { case name, title, ingredient, kcal, calories }
+
+            init(from d: Decoder) throws {
+                // допускаем и "просто строка"
+                if let sv = try? d.singleValueContainer(), let str = try? sv.decode(String.self) {
+                    name = str; kcal = nil; return
+                }
+                let c = try d.container(keyedBy: CodingKeys.self)
+                name = (try? c.decode(String.self, forKey: .name))
+                    ?? (try? c.decode(String.self, forKey: .title))
+                    ?? (try? c.decode(String.self, forKey: .ingredient))
+                    ?? ""
+                // поддержим и "kcal" и "calories"
+                if let i = try? c.decode(Int.self, forKey: .kcal) { kcal = i }
+                else if let i = try? c.decode(Int.self, forKey: .calories) { kcal = i }
+                else { kcal = nil }
+            }
+        }
+
+        let title: String?
+        let calories: Int
+        let proteinG: Int
+        let fatG: Int
+        let carbsG: Int
+        let servings: Int?
+        let benefitScore: Int?
+        let ingredients: [IngredientDTO]?
+
+        enum CodingKeys: String, CodingKey {
+            case title, name
+            case calories, kcal
+            case protein_g, protein
+            case fat_g, fat, fats
+            case carbs_g, carbs, carbohydrates
+            case servings
+            case benefit_score, benefitScore
+            case ingredients
+        }
+
+        init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            title        = (try? c.decode(String.self, forKey: .title)) ?? (try? c.decode(String.self, forKey: .name))
+            calories     = try c.decodeFirstInt(for: [.calories, .kcal])
+            proteinG     = try c.decodeFirstInt(for: [.protein_g, .protein])
+            fatG         = try c.decodeFirstInt(for: [.fat_g, .fat, .fats])
+            carbsG       = try c.decodeFirstInt(for: [.carbs_g, .carbs, .carbohydrates])
+            servings     = try? c.decode(Int.self, forKey: .servings)
+            benefitScore = try? c.decodeFirstInt(for: [.benefit_score, .benefitScore])
+            ingredients  = try? c.decode([IngredientDTO].self, forKey: .ingredients)
+        }
+
+        func toMeal() -> Meal {
+            Meal(
+                title: title ?? "",
+                calories: calories,
+                proteins: proteinG,
+                fats: fatG,
+                carbs: carbsG,
+                servings: servings ?? 1,
+                benefitScore: benefitScore ?? 5,
+                ingredients: (ingredients ?? []).map { Ingredient(name: $0.name, kcal: $0.kcal ?? 0) }
+            )
+        }
+    }
+}
+
+
+
+private struct Multipart {
+    let boundary = "Boundary-\(UUID().uuidString)"
+    var data = Data()
+    mutating func addText(name: String, value: String) {
+        data += "--\(boundary)\r\n".data(using: .utf8)!
+        data += "Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!
+        data += "\(value)\r\n".data(using: .utf8)!
+    }
+    mutating func addFile(name: String, filename: String, mime: String, file: Data) {
+        data += "--\(boundary)\r\n".data(using: .utf8)!
+        data += "Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!
+        data += "Content-Type: \(mime)\r\n\r\n".data(using: .utf8)!
+        data += file
+        data += "\r\n".data(using: .utf8)!
+    }
+    mutating func finalize() { data += "--\(boundary)--\r\n".data(using: .utf8)! }
+    var contentType: String { "multipart/form-data; boundary=\(boundary)" }
+}
+
+extension AuthAPI {
+    func analyze(image: UIImage, title: String? = nil, servings: Int? = nil) async throws -> Meal {
+        guard let jpeg = image.jpegData(compressionQuality: 0.9) else {
+            throw APIError.decoding("Could not encode JPEG")
+        }
+        do {
+            return try await analyzeSend(imageData: jpeg, title: title, servings: servings)
+        } catch APIError.http(let code, _) where code == 413 {
+            // только если сервер сказал "слишком большой" — уменьшим и повторим
+            let scaled = imageDownscaledJPEG(image, maxDimension: 1600, quality: 0.7)
+            return try await analyzeSend(imageData: scaled, title: title, servings: servings)
+        }
+    }
+
+    private func analyzeSend(imageData: Data, title: String?, servings: Int?) async throws -> Meal {
+            var mp = Multipart()
+            if let title { mp.addText(name: "title", value: title) }
+            if let servings { mp.addText(name: "servings", value: String(servings)) }
+            mp.addFile(name: "image", filename: "meal.jpg", mime: "image/jpeg", file: imageData) // имя поля "image"
+            mp.finalize()
+
+            var req = URLRequest(url: url("api/analyze/"))
+            req.httpMethod = "POST"
+            req.setValue(mp.contentType, forHTTPHeaderField: "Content-Type")
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            if let t = TokenStore.load()?.access { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
+            req.httpBody = mp.data
+
+            if debugAPI { print("➡️ ANALYZE \(imageData.count) bytes -> /api/analyze/") }
+
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw APIError.decoding("Not an HTTP response") }
+
+            // Лог исходного тела
+            if debugAPI {
+                if let obj = try? JSONSerialization.jsonObject(with: data),
+                   let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: pretty, encoding: .utf8) {
+                    print("⬅️ \(http.statusCode) /api/analyze/\n\(str)\n")
+                } else {
+                    print("⬅️ \(http.statusCode) /api/analyze/ (raw \(data.count) bytes)\n\(String(data: data, encoding: .utf8) ?? "<non-utf8>")\n")
+                }
+            }
+
+            guard (200..<300).contains(http.statusCode) else {
+                // Попробуем распарсить валидационные ошибки
+                if let dict = try? JSONDecoder().decode([String:[String]].self, from: data) {
+                    throw APIError.validation(dict)
+                }
+                throw APIError.http(http.statusCode, String(data: data, encoding: .utf8))
+            }
+
+            guard !data.isEmpty else {
+                // Вот источник «the data couldn’t be read because it is missing»
+                throw APIError.decoding("Empty body from /api/analyze/ (status \(http.statusCode))")
+            }
+
+            // Попробуем несколько форм: { ... }, { "meal": { ... } }, [ { ... } ]
+            let dec = JSONDecoder()
+            if let dto = try? dec.decode(AnalyzeDTO.self, from: data) {
+                return dto.toMeal()
+            }
+            if let wrap = try? dec.decode(MealWrapper.self, from: data) {
+                return wrap.meal.toMeal()
+            }
+            if let arr = try? dec.decode([AnalyzeDTO].self, from: data), let first = arr.first {
+                return first.toMeal()
+            }
+
+            // Если ничего не подошло — отдадим тело в ошибку
+            throw APIError.decoding(String(data: data, encoding: .utf8) ?? "Unknown JSON")
+        }
+
+        private struct MealWrapper: Decodable { let meal: AnalyzeDTO }
+    }
+
+    // используется только в ретрае — если 413
+    private func imageDownscaledJPEG(_ image: UIImage, maxDimension: CGFloat, quality: CGFloat) -> Data {
+        let w = image.size.width, h = image.size.height
+        let scale = min(1, maxDimension / max(w, h))
+        if scale >= 1, let full = image.jpegData(compressionQuality: quality) { return full }
+        let target = CGSize(width: w*scale, height: h*scale)
+        let fmt = UIGraphicsImageRendererFormat(); fmt.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: fmt)
+            .jpegData(withCompressionQuality: quality) { _ in
+                image.draw(in: CGRect(origin: .zero, size: target))
+            }
+    }
+

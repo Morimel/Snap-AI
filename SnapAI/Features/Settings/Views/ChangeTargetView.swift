@@ -9,21 +9,37 @@ import SwiftUI
 
 struct ChangeTargetView: View {
     @Environment(\.dismiss) private var dismiss
-
-    @State private var calories = 1958
-    @State private var proteins = 50
-    @State private var carbohydrates = 150
-    @State private var fats = 32
-
+    
+    @State private var calories: Int
+    @State private var proteins: Int
+    @State private var carbohydrates: Int
+    @State private var fats: Int
+    
+    let onSave: (Int, Int, Int, Int) async -> Void
+    
     // 🔹 общий фокус для всех полей
     @FocusState private var focusedField: Field?
-
+    
     enum Field: Hashable { case calories, proteins, carbs, fats }
-
+    
+    init(
+        initialCalories: Int,
+        initialProteins: Int,
+        initialCarbs: Int,
+        initialFats: Int,
+        onSave: @escaping (Int, Int, Int, Int) async -> Void
+    ) {
+        _calories      = State(initialValue: initialCalories)
+        _proteins      = State(initialValue: initialProteins)
+        _carbohydrates = State(initialValue: initialCarbs)
+        _fats          = State(initialValue: initialFats)
+        self.onSave    = onSave
+    }
+    
     var body: some View {
         VStack {
             LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 14) {
-
+                
                 MetricPill(title: "Calories", value: "\(calories) kcal")
                 StepperPill(
                     title: "Change",
@@ -31,7 +47,7 @@ struct ChangeTargetView: View {
                     field: .calories,
                     focused: $focusedField
                 )
-
+                
                 MetricPill(title: "Proteins",
                            value: "\(proteins) g",
                            badge: .init(kind: .text("P"), color: .blue))
@@ -41,7 +57,7 @@ struct ChangeTargetView: View {
                     field: .proteins,
                     focused: $focusedField
                 )
-
+                
                 MetricPill(title: "Carbohydrates",
                            value: "\(carbohydrates) g",
                            badge: .init(kind: .text("C"), color: .orange))
@@ -51,7 +67,7 @@ struct ChangeTargetView: View {
                     field: .carbs,
                     focused: $focusedField
                 )
-
+                
                 MetricPill(title: "Fats",
                            value: "\(fats) g",
                            badge: .init(kind: .text("F"), color: .green))
@@ -63,7 +79,7 @@ struct ChangeTargetView: View {
                 )
             }
             .padding(.vertical, 20)
-
+            
             // твоя кнопка Edit…
             Spacer()
         }
@@ -74,20 +90,28 @@ struct ChangeTargetView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button { dismiss() } label: {
-                            AppImages.ButtonIcons.arrowRight
-                                .resizable().scaledToFill()
-                                .frame(width: 12, height: 12)
-                                .rotationEffect(.degrees(180))
-                                .padding(12)
+            ToolbarItem(placement: .topBarLeading) {
+                Button { dismiss() } label: {
+                    AppImages.ButtonIcons.arrowRight
+                        .resizable().scaledToFill()
+                        .frame(width: 12, height: 12)
+                        .rotationEffect(.degrees(180))
+                        .padding(12)
+                }
+                .buttonStyle(.plain)
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Change target")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(AppColors.primary)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+                    StickyCTA(title: "Save") {
+                        Task {
+                            await onSave(calories, proteins, carbohydrates, fats)
+                            dismiss()
                         }
-                        .buttonStyle(.plain)
-                    }
-                    ToolbarItem(placement: .principal) {
-                        Text("Change target")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(AppColors.primary)
                     }
                 }
     }
@@ -96,6 +120,11 @@ struct ChangeTargetView: View {
 
 #Preview {
     NavigationStack {
-        ChangeTargetView()
+        ChangeTargetView(
+            initialCalories: 1958,
+            initialProteins: 50,
+            initialCarbs: 150,
+            initialFats: 32
+        ) { _,_,_,_ in }
     }
 }

@@ -22,6 +22,10 @@ struct PlanScreen: View {
     @EnvironmentObject private var paywall: PaywallCenter
     @State private var showPaywallScreen = false
     
+    @EnvironmentObject var vm: OnboardingViewModel
+
+    private var current: PersonalPlan { vm.personalPlan ?? plan }
+    
     let plan: PersonalPlan
     
     let tips: [Tip] = [
@@ -87,14 +91,14 @@ struct PlanScreen: View {
                     .padding(.horizontal, 20)
                     
                     HStack(spacing: 16) {
-                        NutrientsCard(value: plan.dailyCalories, title: "Calories", color: AppColors.customRed)
-                        NutrientsCard(value: plan.carbs, title: "Carbohydrates", color: AppColors.customOrange)
+                        NutrientsCard(value: current.dailyCalories, title: "Calories",       color: AppColors.customRed)
+                        NutrientsCard(value: current.carbs,         title: "Carbohydrates",  color: AppColors.customOrange)
                     }
                     .padding(.bottom, 4)
                     
                     HStack(spacing: 16) {
-                        NutrientsCard(value: plan.protein, title: "Proteins", color: AppColors.customBlue)
-                        NutrientsCard(value: plan.fat, title: "Fats", color: AppColors.customGreen)
+                        NutrientsCard(value: current.protein, title: "Proteins", color: AppColors.customBlue)
+                        NutrientsCard(value: current.fat,     title: "Fats",     color: AppColors.customGreen)
                     }
                     
                     HStack {
@@ -123,6 +127,10 @@ struct PlanScreen: View {
             }
             .navigationBarBackButtonHidden(true)
             .background(AppColors.background.ignoresSafeArea())
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: [current.dailyCalories, current.protein, current.carbs, current.fat] // Equatable ключ
+            )
             .safeAreaInset(edge: .bottom) {
                 StickyCTA(title: "Next") {
                     hasOnboarded = true          // выходим из онбординга
@@ -130,8 +138,20 @@ struct PlanScreen: View {
                 }
             }
             .navigationDestination(isPresented: $showChangeTarget) {
-                            ChangeTargetView()
-                        }
+                ChangeTargetView(
+                    initialCalories: current.dailyCalories,
+                    initialProteins: current.protein,
+                    initialCarbs:    current.carbs,
+                    initialFats:     current.fat
+                ) { cal, prot, carbs, fats in
+                    await vm.saveManualPlan(
+                        calories: cal,
+                        proteins: prot,
+                        carbs:    carbs,
+                        fats:     fats
+                    )
+                }
+            }
             
         
         // как только онбординг завершён — закрываем себя (fullScreenCover от RateStep)

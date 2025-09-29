@@ -9,13 +9,28 @@ import SwiftUI
 
 //MARK: - StatisticsCard
 struct StatisticsCard: View {
+    
+    let needKcal: Int
+    let spentKcal: Int
+    
+    // (текущее, максимум). Пока current = 0, max — из плана (бэк)
+        let protein: (current: Int, max: Int)
+        let fat:     (current: Int, max: Int)
+        let carb:    (current: Int, max: Int)
+    
+    private var remaining: Int { max(needKcal - spentKcal, 0) }
+
+    private func pct(current: Int, target: Int) -> CGFloat {
+        guard target > 0 else { return 0 }
+        let clamped = min(Swift.max(0, current), target)
+        return CGFloat(clamped) / CGFloat(target)
+    }
+    
     var body: some View {
-        
-        let kcal = 1758
-        
-        let kcalNeeded = 2569
-        
-        let kcalSpent = 811
+                
+        let pPct = pct(current: protein.current, target: protein.max)
+        let cPct = pct(current: carb.current,    target: carb.max)
+        let fPct = pct(current: fat.current,     target: fat.max)
         
         VStack {
             ZStack {
@@ -26,7 +41,7 @@ struct StatisticsCard: View {
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
-                    .trim(from: 0, to: 0.5)
+                    .trim(from: 0, to: pPct)
                     .stroke(lineWidth: 10)
                     .frame(width: 110, height: 110)
                     .rotationEffect(.degrees(-90))
@@ -39,7 +54,7 @@ struct StatisticsCard: View {
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
-                    .trim(from: 0, to: 0.5)
+                    .trim(from: 0, to: cPct)
                     .stroke(lineWidth: 8)
                     .frame(width: 156, height: 156)
                     .rotationEffect(.degrees(-90))
@@ -53,14 +68,14 @@ struct StatisticsCard: View {
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
-                    .trim(from: 0, to: 0.6)
+                    .trim(from: 0, to: fPct)
                     .stroke(lineWidth: 12)
                     .frame(width: 200, height: 200)
                     .rotationEffect(.degrees(-90))
                     .foregroundStyle(LinearGradient(gradient: Gradient(colors: [AppColors.customGreen]), startPoint: .top, endPoint: .bottomLeading))
                 
                 VStack {
-                    Text("\(kcal)")
+                    Text("\(remaining)")
                         .foregroundStyle(AppColors.primary)
                         .font(.system(size: 24, weight: .bold, design: .default))
                     
@@ -72,7 +87,7 @@ struct StatisticsCard: View {
             .padding(.top, 20)
             HStack {
                 VStack {
-                    Text("\(kcalNeeded)")
+                    Text("\(needKcal)")
                         .foregroundStyle(AppColors.primary)
                         .font(.system(size: 20, weight: .bold, design: .default))
                     
@@ -84,7 +99,7 @@ struct StatisticsCard: View {
                 
                 
                 VStack {
-                    Text("\(kcalSpent)")
+                    Text("\(spentKcal)")
                         .foregroundStyle(AppColors.primary)
                         .font(.system(size: 20, weight: .bold, design: .default))
                     
@@ -95,11 +110,13 @@ struct StatisticsCard: View {
                 .padding(.horizontal, 36)
             }
             
+            // Прогресс-линии: (current, max). Сейчас current=0, max — из плана.
             MacroSummaryCard(
-                protein: (150, 220),
-                fat:     (56,  88),
-                carb:    (150, 220)
+                protein: (Double(protein.current), Double(protein.max)),
+                fat:     (Double(fat.current),     Double(fat.max)),
+                carb:    (Double(carb.current),    Double(carb.max))
             )
+
             .padding(.horizontal)
         }
         .background(
@@ -112,5 +129,10 @@ struct StatisticsCard: View {
         )
         .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
         .padding()
+        .animation(.easeInOut(duration: 0.25), value: needKcal)
+                .animation(.easeInOut(duration: 0.25), value: spentKcal)
+                .animation(.easeInOut(duration: 0.25), value: protein.current)
+                .animation(.easeInOut(duration: 0.25), value: carb.current)
+                .animation(.easeInOut(duration: 0.25), value: fat.current)
     }
 }

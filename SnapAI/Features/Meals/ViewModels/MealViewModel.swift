@@ -8,22 +8,21 @@
 import SwiftUI
 
 //MARK: - MealViewModel
+// MealViewModel.swift
 @MainActor
 final class MealViewModel: ObservableObject {
     @Published var meal = Meal()
     @Published var isScanning = false
     @Published var error: String?
 
-    // положи ключ в Keychain и передай сюда
-    func scan(image: UIImage, apiKey: String) async {
+    func scan(image: UIImage) async {
         isScanning = true; error = nil
         do {
-            let result = try await FoodScanService.scan(image: image, apiKey: apiKey)
-            self.meal = result
+            let m = try await AuthAPI.shared.analyze(image: image)
+            self.meal = m
         } catch {
             self.error = error.localizedDescription
         }
         isScanning = false
     }
 }
-

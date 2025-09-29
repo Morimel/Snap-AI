@@ -15,6 +15,8 @@ struct MainScreen: View {
     @State private var selected = Date() // сегодня
     
     var onNext: (() -> Void)? = nil
+    private var p: PersonalPlan? { vm.personalPlan }   // без force unwrap
+
     
     @State private var showCamera = false
     private struct CropSession: Identifiable { let id = UUID(); let image: UIImage }
@@ -30,7 +32,22 @@ struct MainScreen: View {
 //                WeekStrip(selected: $selected, reference: ref)
                 WeekStrip(selected: $selected)
                 
-                StatisticsCard()
+                if let p {
+                                    StatisticsCard(
+                                        needKcal: p.dailyCalories,
+                                        spentKcal: 0,
+                                        protein: (0, p.protein),
+                                        fat:     (0, p.fat),
+                                        carb:    (0, p.carbs)
+                                    )
+                                } else {
+                                    // плейсхолдер, пока грузится
+                                    StatisticsCard(
+                                        needKcal: 0, spentKcal: 0,
+                                        protein: (0, 0), fat: (0, 0), carb: (0, 0)
+                                    )
+                                    .redacted(reason: .placeholder)
+                                }
                 
                 HStack {
                     Text("History")
@@ -92,6 +109,7 @@ struct MainScreen: View {
                 Text("No image").foregroundStyle(.secondary)
             }
         }
+        .task { await vm.ensurePlanLoaded() }
     }
 }
 
@@ -110,6 +128,31 @@ private struct MainScreen_Preview: View {
     var body: some View {
         NavigationStack {
             MainScreen(vm: vm)
+        }
+    }
+}
+
+
+// OnboardingViewModel.swift
+extension OnboardingViewModel {
+    func ensurePlanLoaded() async {
+        if personalPlan != nil { return }
+        do {
+            let g = try await AuthAPI.shared.getCurrentPlan()
+            await MainActor.run {
+                self.personalPlan = PersonalPlan(
+                    weightUnit: "kg",            // при желании возьми из профиля
+                    maintainWeight: 0,
+                    dailyCalories: g.dailyCalories,
+                    protein: g.proteinG,
+                    fat: g.fatG,
+                    carbs: g.carbsG,
+                    meals: [],
+                    workouts: []
+                )
+            }
+        } catch {
+            print("get_plan failed:", error.localizedDescription)
         }
     }
 }

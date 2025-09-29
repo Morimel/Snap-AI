@@ -53,6 +53,7 @@ struct OnboardingFlow: View {
                     }
                 }
         }
+        .environmentObject(vm)
         .environmentObject(router)
     }
 }

@@ -35,22 +35,20 @@ struct RateStep: View {
                     progress: $vm.progress,
                     onCancel: nil
                 )
+                // RateStep: внутри .fullScreenCover task
                 .task {
                     do {
                         await vm.finish()
 
                         guard let plan = vm.repository.fetchSavedPlan() ?? vm.personalPlan else {
-                            throw NSError(domain: "plan", code: -1,
-                                          userInfo: [NSLocalizedDescriptionKey: "Plan is empty"])
+                            throw NSError(domain: "plan", code: -1, userInfo: [NSLocalizedDescriptionKey: "Plan is empty"])
                         }
+
                         let caption = vm.data.goalCaption()
 
                         await MainActor.run { showSubmitting = false }
-                        try? await Task.sleep(nanoseconds: 250_000_000)   // дать закрыться анимации cover
-
-                        await MainActor.run {
-                            router.push(.plan(plan, caption))
-                        }
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        await MainActor.run { router.push(.plan(plan, caption)) }
                     } catch {
                         await MainActor.run {
                             showSubmitting = false
@@ -59,6 +57,7 @@ struct RateStep: View {
                         }
                     }
                 }
+
             }
             // Возврат из App Store → стартуем сабмит
             .onChange(of: scenePhase) { phase in

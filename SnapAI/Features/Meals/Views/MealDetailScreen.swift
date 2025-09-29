@@ -15,6 +15,7 @@ struct MealDetailScreen: View {
     @State private var apiKey: String = "<YOUR_OPENAI_KEY>"   // замени хранением в Keychain
     @Environment(\.dismiss) private var dismiss
     @State private var servings = 1
+    var onClose: (() -> Void)? = nil
     
     @FocusState private var focusedField: Field?
     private enum Field: Hashable { case servings }
@@ -47,25 +48,28 @@ struct MealDetailScreen: View {
 
                         // Сетка метрик
                         LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 14) {
-                            MetricPill(title: "Benefits", value: "5/10")
+                            MetricPill(title: "Callories", value: "\(vm.meal.calories) kcal")
                             StepperPill(
-                                title: "Servings",
-                                value: $servings,
-                                field: .servings,
-                                focused: $focusedField
-                            )
+                                    title: "Servings",
+                                    value: Binding(
+                                        get: { vm.meal.servings },
+                                        set: { newVal in var m = vm.meal; m.servings = newVal; vm.meal = m }
+                                    ),
+                                    field: .servings,
+                                    focused: $focusedField
+                                )
                             MetricPill(title: "Proteins",
-                                       value: "50 g",
+                                       value: "\(vm.meal.proteins) g",
                                        badge: .init(kind: .text("P"), color: .blue))
                             
                             MetricPill(title: "Carbohydrates",
-                                       value: "150 g",
+                                       value: "\(vm.meal.carbs) g",
                                        badge: .init(kind: .text("C"), color: .orange))
                             MetricPill(title: "Fats",
-                                       value: "32 g",
+                                       value: "\(vm.meal.fats) g",
                                        badge: .init(kind: .text("F"), color: .green))
                             MetricPill(title: "Benefits",
-                                       value: "5/10",
+                                       value: "\(vm.meal.benefitScore)/10",
                                        badge: .init(kind: .system("heart.fill"), color: .red))
                         }
                         
@@ -212,9 +216,9 @@ struct MealDetailScreen: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                    CircleIconButton {
-                        dismiss()
-                    }
+                CircleIconButton {
+                                    onClose?()               // 👈 вместо dismiss()
+                                }
                     .foregroundStyle(.black)
                     .opacity(chromeOpacity)
                     
@@ -232,9 +236,8 @@ struct MealDetailScreen: View {
         }
         .ignoresSafeArea()
         .task {
-            // при первом появлении фото — запускаем сканирование
             if vm.meal.title.isEmpty {
-                await vm.scan(image: image, apiKey: apiKey)
+                await vm.scan(image: image)   // теперь бэкенд
             }
         }
         .alert("Error", isPresented: Binding(get: { vm.error != nil }, set: { _ in vm.error = nil })) {

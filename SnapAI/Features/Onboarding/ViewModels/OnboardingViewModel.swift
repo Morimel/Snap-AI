@@ -69,5 +69,44 @@ final class OnboardingViewModel: ObservableObject {
                 phase = .failed(error.localizedDescription)
             }
         }
+    
+    
+    func saveManualPlan(calories: Int, proteins: Int, carbs: Int, fats: Int) async {
+            do {
+                try await AuthAPI.shared.patchPlan(
+                    calories: calories, proteinG: proteins, fatG: fats, carbsG: carbs
+                )
+
+                // подтягиваем актуальные значения с бэка
+                let g = try await AuthAPI.shared.getCurrentPlan()
+
+                // обновляем локальную модель (чтобы PlanScreen перерисовался)
+                if let old = self.personalPlan {
+                    self.personalPlan = PersonalPlan(
+                        weightUnit: old.weightUnit,
+                        maintainWeight: old.maintainWeight,
+                        dailyCalories: g.dailyCalories,
+                        protein: g.proteinG,
+                        fat: g.fatG,
+                        carbs: g.carbsG,
+                        meals: old.meals,
+                        workouts: old.workouts
+                    )
+                } else {
+                    self.personalPlan = PersonalPlan(
+                        weightUnit: "kg",
+                        maintainWeight: 0,
+                        dailyCalories: g.dailyCalories,
+                        protein: g.proteinG,
+                        fat: g.fatG,
+                        carbs: g.carbsG,
+                        meals: [],
+                        workouts: []
+                    )
+                }
+            } catch {
+                print("Save manual plan failed:", error.localizedDescription)
+            }
+        }
 }
 
