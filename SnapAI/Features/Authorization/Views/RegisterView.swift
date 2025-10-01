@@ -76,7 +76,7 @@ struct AuthScreenRegister: View {
        private var emailError: String? {
            let s = emailTrimmed
            guard !s.isEmpty else { return nil }
-           return isValidEmail(s) ? nil : "Некорректный e-mail"
+           return isValidEmail(s) ? nil : "Invalid e-mail"
        }
 
        private var isFormValid: Bool {

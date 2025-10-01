@@ -11,6 +11,8 @@ import SwiftUI
 struct MealEditSheet: View {
     @ObservedObject var vm: MealViewModel
     @Binding var isPresented: Bool
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var showAddIngredient = false
 
     @State private var draft = Meal()
 
@@ -25,18 +27,19 @@ struct MealEditSheet: View {
             ScrollView {
                 form
                 
-                
-                
                 PlusCapsuleButton(width: 140, height: 56, iconSize: 20) {
-                    vm.meal = draft
-                    print("pluc capsule tapped")
+                    showAddIngredient = true
                 }
                 .padding(.bottom, 16)
                 
                 
-                Button("Сохранить") {
-                    vm.meal = draft
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { isPresented = false }
+                Button("Save") {
+                    Task {
+                           await vm.saveAndRecompute(from: draft)
+                           await MainActor.run {
+                               withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { isPresented = false }
+                           }
+                       }
                 }
                 .buttonStyle(.plain) // убираем системные артефакты
                 .frame(maxWidth: .infinity, minHeight: 56)
@@ -65,6 +68,7 @@ struct MealEditSheet: View {
                 .zIndex(2)
                 .padding(.horizontal)
             }
+            .scrollIndicators(.hidden)
         }
         .hideKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
@@ -77,6 +81,20 @@ struct MealEditSheet: View {
                 }
             }
         )
+        .onChange(of: scenePhase) { phase in
+                    // и .inactive, и .background — чтобы сработало при свайпе домой/мультизадачности
+                    if phase == .inactive || phase == .background {
+                        // 1) закрыть сам экран редактирования
+                        isPresented = false
+                        // 2) попросить родителя уйти на main
+                        NotificationCenter.default.post(name: .dismissToMainFromEdit, object: nil)
+                    }
+                }
+        .sheet(isPresented: $showAddIngredient) {
+                    AddIngredientSheet { newIng in
+                        draft.ingredients.append(newIng)   // 👈 добавляем в черновик
+                    }
+                }
     }
 
     
@@ -150,16 +168,10 @@ struct MealEditSheet: View {
             }
 
             Text("Ingredients")
+                .foregroundStyle(AppColors.primary)
                 .font(.title3.weight(.semibold))
 
-            IngredientList(ingredients: Binding(
-                get: { vm.meal.ingredients },
-                set: { newValue in
-                    var m = vm.meal
-                    m.ingredients = newValue
-                    vm.meal = m
-                }
-            ))
+            IngredientList(ingredients: $draft.ingredients, showAddButton: false)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
@@ -188,5 +200,62 @@ private func metricField(title: String, value: Binding<Int>, unit: String) -> so
 #Preview {
     NavigationStack {
         MealEditSheet(vm: .preview, isPresented: .constant(true))
+    }
+}
+
+
+struct AddIngredientSheet: View {
+    @State private var name = ""
+    @State private var kcalText = ""
+    let onDone: (Ingredient) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Capsule().fill(.secondary.opacity(0.3))
+                .frame(width: 44, height: 5).padding(.top, 8)
+
+            Text("Add ingredient")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(AppColors.primary)
+
+            VStack(spacing: 12) {
+                TextField("Name", text: $name)
+                    .padding().background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                HStack {
+                    TextField("0", text: $kcalText)
+                        .keyboardType(.numberPad)
+                        .onChange(of: kcalText) { v in
+                            kcalText = v.filter(\.isNumber)
+                        }
+                        .padding(.vertical, 12)
+                    Spacer()
+                    Text("kcal").foregroundStyle(AppColors.primary)
+                }
+                .padding(.horizontal, 14)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+
+            Button("Done") {
+                let kcal = Int(kcalText) ?? 0
+                onDone(.init(name: name.trimmingCharacters(in: .whitespacesAndNewlines), kcal: kcal))
+                dismiss()
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(RoundedRectangle(cornerRadius: 28).fill(AppColors.secondary))
+            .foregroundStyle(.white)
+            .padding(.top, 8)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+        .background(AppColors.background.ignoresSafeArea())
+        .presentationDetents([.fraction(0.32)])      // 👈 не на весь экран
+        .presentationDragIndicator(.visible)
     }
 }

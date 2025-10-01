@@ -70,10 +70,11 @@ struct TokenPair: Decodable {
 
 
 enum APIError: Error, LocalizedError {
-    case validation([String: [String]])     
+    case validation([String: [String]])
     case http(Int, String?)
     case decoding(String)
     case transport(Error)
+    case auth(String)                // 👈 ДОБАВИЛИ
 
     var errorDescription: String? {
         switch self {
@@ -81,9 +82,21 @@ enum APIError: Error, LocalizedError {
         case .http(let code, let body): return "HTTP \(code): \(body ?? "")"
         case .decoding(let msg): return "Decoding error: \(msg)"
         case .transport(let err): return err.localizedDescription
+        case .auth(let msg): return "Auth error: \(msg)"
         }
     }
 }
+
+extension APIError {
+    var isAuthError: Bool {
+        switch self {
+        case .auth: return true
+        case .http(let code, _): return code == 401
+        default: return false
+        }
+    }
+}
+
 
 final class AuthAPI {
     static let shared = AuthAPI()
@@ -94,9 +107,34 @@ final class AuthAPI {
     private let debugAPI = true
     
     private func url(_ path: String) -> URL {
-            let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
-            return baseURL.appendingPathComponent(trimmed)
+        var trimmed = path
+        if trimmed.hasPrefix("/") { trimmed.removeFirst() }
+
+        // Полный URL (http/https) — возвращаем как есть
+        if let full = URL(string: trimmed), full.scheme != nil {
+            return full
         }
+
+        // Если есть query — не используем appendingPathComponent (он экранирует '?')
+        if let q = trimmed.firstIndex(of: "?") {
+            let pathPart  = String(trimmed[..<q])                 // e.g. "api/meals/"
+            let queryPart = String(trimmed[trimmed.index(after: q)...]) // e.g. "date=2025-09-30"
+
+            var c = URLComponents()
+            c.scheme = baseURL.scheme
+            c.host   = baseURL.host
+            c.port   = baseURL.port
+            // гарантируем слеш между базой и путём
+            let basePath = baseURL.path.hasSuffix("/") ? baseURL.path : baseURL.path + "/"
+            c.percentEncodedPath = basePath + pathPart
+            c.percentEncodedQuery = queryPart
+            return c.url!
+        }
+
+        // Без query — можно спокойно через appendingPathComponent
+        return baseURL.appendingPathComponent(trimmed)
+    }
+
 
     private let session: URLSession = {
         let cfg = URLSessionConfiguration.default
@@ -303,6 +341,43 @@ final class AuthAPI {
             throw APIError.http(http.statusCode, text)
         }
     }
+    
+    
+    
+    // ⬇️ ВСТАВЬ ЭТО ВНУТРИ AuthAPI (рядом с analyzeSend)
+
+    private func parseAnalyzeResponse(data: Data, http: HTTPURLResponse, endpoint: String = "/api/analyze/") throws -> Meal {
+        // Лог ответа
+        if debugAPI {
+            if let obj = try? JSONSerialization.jsonObject(with: data),
+               let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
+               let str = String(data: pretty, encoding: .utf8) {
+                print("⬅️ \(http.statusCode) \(endpoint)\n\(str)\n")
+            } else {
+                print("⬅️ \(http.statusCode) \(endpoint) (raw \(data.count) bytes)\n\(String(data: data, encoding: .utf8) ?? "<non-utf8>")\n")
+            }
+        }
+
+        guard (200..<300).contains(http.statusCode) else {
+            if let dict = try? JSONDecoder().decode([String:[String]].self, from: data) {
+                throw APIError.validation(dict)
+            }
+            throw APIError.http(http.statusCode, String(data: data, encoding: .utf8))
+        }
+
+        guard !data.isEmpty else {
+            throw APIError.decoding("Empty body from \(endpoint) (status \(http.statusCode))")
+        }
+
+        // формы: {…} | {"meal":{…}} | [{…}]
+        let dec = JSONDecoder()
+        if let dto = try? dec.decode(AnalyzeDTO.self, from: data) { return dto.toMeal() }
+        if let wrap = try? dec.decode(MealWrapper.self, from: data) { return wrap.meal.toMeal() }
+        if let arr = try? dec.decode([AnalyzeDTO].self, from: data), let first = arr.first { return first.toMeal() }
+
+        throw APIError.decoding(String(data: data, encoding: .utf8) ?? "Unknown JSON")
+    }
+
 
 
 }
@@ -559,12 +634,41 @@ struct RefreshResponse: Decodable {
 
 
 extension AuthAPI {
-    func refresh() async throws -> AuthTokens {
-        guard let t = TokenStore.load() else { throw APIError.http(401, "No refresh") }
-        let r: RefreshResponse = try await postNoRetry("api/auth/refresh/", ["refresh": t.refresh])
-        let new = AuthTokens(access: r.access, refresh: r.refresh ?? t.refresh)
-        TokenStore.save(new)
-        return new
+    func refresh() async throws {
+        try await RefreshGate.shared.run {
+            // обычный refresh POST…
+            var req = URLRequest(url: self.url("api/auth/refresh/"))
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            struct Req: Encodable { let refresh: String }
+            guard let tokens = TokenStore.load() else { throw APIError.auth("No refresh token") }
+            req.httpBody = try JSONEncoder().encode(Req(refresh: tokens.refresh))
+
+            let (data, resp) = try await self.session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw APIError.decoding("Not an HTTP response") }
+            guard (200..<300).contains(http.statusCode) else {
+                throw APIError.http(http.statusCode, String(data: data, encoding: .utf8))
+            }
+            struct R: Decodable { let access: String }
+            let r = try JSONDecoder().decode(R.self, from: data)
+
+            // ВАЖНО: сохранить новый access, сохранив старый refresh
+            TokenStore.save(.init(access: r.access, refresh: tokens.refresh))
+            if self.debugAPI { print("✅ refresh: access updated") }
+        }
+    }
+}
+
+actor RefreshGate {
+    static let shared = RefreshGate()
+    private var inFlight: Task<Void, Error>?
+
+    func run(_ block: @escaping () async throws -> Void) async throws {
+        if let task = inFlight { try await task.value; return }
+        let task = Task { try await block() }
+        inFlight = task
+        defer { inFlight = nil }
+        try await task.value
     }
 }
 
@@ -1001,7 +1105,9 @@ extension AuthAPI {
                 else { kcal = nil }
             }
         }
-
+        
+        let id: Int?
+        let imagePath: String?
         let title: String?
         let calories: Int
         let proteinG: Int
@@ -1012,6 +1118,7 @@ extension AuthAPI {
         let ingredients: [IngredientDTO]?
 
         enum CodingKeys: String, CodingKey {
+            case id
             case title, name
             case calories, kcal
             case protein_g, protein
@@ -1020,10 +1127,13 @@ extension AuthAPI {
             case servings
             case benefit_score, benefitScore
             case ingredients
+            case image
         }
 
         init(from d: Decoder) throws {
             let c = try d.container(keyedBy: CodingKeys.self)
+            id           = try? c.decode(Int.self, forKey: .id)
+            imagePath    = try? c.decode(String.self, forKey: .image)
             title        = (try? c.decode(String.self, forKey: .title)) ?? (try? c.decode(String.self, forKey: .name))
             calories     = try c.decodeFirstInt(for: [.calories, .kcal])
             proteinG     = try c.decodeFirstInt(for: [.protein_g, .protein])
@@ -1036,6 +1146,7 @@ extension AuthAPI {
 
         func toMeal() -> Meal {
             Meal(
+                id: id, 
                 title: title ?? "",
                 calories: calories,
                 proteins: proteinG,
@@ -1043,7 +1154,8 @@ extension AuthAPI {
                 carbs: carbsG,
                 servings: servings ?? 1,
                 benefitScore: benefitScore ?? 5,
-                ingredients: (ingredients ?? []).map { Ingredient(name: $0.name, kcal: $0.kcal ?? 0) }
+                ingredients: (ingredients ?? []).map { Ingredient(name: $0.name, kcal: $0.kcal ?? 0) },
+                imagePath: imagePath
             )
         }
     }
@@ -1072,75 +1184,61 @@ private struct Multipart {
 
 extension AuthAPI {
     func analyze(image: UIImage, title: String? = nil, servings: Int? = nil) async throws -> Meal {
-        guard let jpeg = image.jpegData(compressionQuality: 0.9) else {
-            throw APIError.decoding("Could not encode JPEG")
-        }
-        do {
-            return try await analyzeSend(imageData: jpeg, title: title, servings: servings)
-        } catch APIError.http(let code, _) where code == 413 {
-            // только если сервер сказал "слишком большой" — уменьшим и повторим
-            let scaled = imageDownscaledJPEG(image, maxDimension: 1600, quality: 0.7)
-            return try await analyzeSend(imageData: scaled, title: title, servings: servings)
-        }
+        // ⚠️ ВЫНЕСЕНО В ФОН
+        let jpeg = await Task.detached { makeJPEGUnderLimit(image) }.value
+
+        return try await analyzeSend(imageData: jpeg, title: title, servings: servings)
     }
 
+
     private func analyzeSend(imageData: Data, title: String?, servings: Int?) async throws -> Meal {
-            var mp = Multipart()
-            if let title { mp.addText(name: "title", value: title) }
-            if let servings { mp.addText(name: "servings", value: String(servings)) }
-            mp.addFile(name: "image", filename: "meal.jpg", mime: "image/jpeg", file: imageData) // имя поля "image"
-            mp.finalize()
+        var mp = Multipart()
+        if let title { mp.addText(name: "title", value: title) }
+        if let servings { mp.addText(name: "servings", value: String(servings)) }
+        mp.addFile(name: "image", filename: "meal.jpg", mime: "image/jpeg", file: imageData)
+        mp.finalize()
 
-            var req = URLRequest(url: url("api/analyze/"))
-            req.httpMethod = "POST"
-            req.setValue(mp.contentType, forHTTPHeaderField: "Content-Type")
-            req.setValue("application/json", forHTTPHeaderField: "Accept")
-            if let t = TokenStore.load()?.access { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
-            req.httpBody = mp.data
+        if debugAPI { print("➡️ ANALYZE \(imageData.count) bytes -> /api/analyze/") }
 
-            if debugAPI { print("➡️ ANALYZE \(imageData.count) bytes -> /api/analyze/") }
+        // Общие заголовки
+        var headers: [String: String] = [
+            "Accept": "application/json",
+            "Content-Type": mp.contentType
+        ]
+        if let t = TokenStore.load()?.access { headers["Authorization"] = "Bearer \(t)" }
 
-            let (data, resp) = try await session.data(for: req)
-            guard let http = resp as? HTTPURLResponse else { throw APIError.decoding("Not an HTTP response") }
+        // ⚠️ фон vs актив
+#if canImport(UIKit)
+let isActive = await MainActor.run {
+    UIApplication.shared.applicationState == .active
+}
+if !isActive {
+    let (data, http) = try await BackgroundAnalyze.shared.upload(
+        to: url("api/analyze/"),
+        body: mp.data,
+        headers: [
+            "Accept": "application/json",
+            "Content-Type": mp.contentType,
+            "Authorization": TokenStore.load().map { "Bearer \($0.access)" } ?? ""
+        ].compactMapValues { $0.isEmpty ? nil : $0 }
+    )
+    return try parseAnalyzeResponse(data: data, http: http)
+}
+#endif
 
-            // Лог исходного тела
-            if debugAPI {
-                if let obj = try? JSONSerialization.jsonObject(with: data),
-                   let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
-                   let str = String(data: pretty, encoding: .utf8) {
-                    print("⬅️ \(http.statusCode) /api/analyze/\n\(str)\n")
-                } else {
-                    print("⬅️ \(http.statusCode) /api/analyze/ (raw \(data.count) bytes)\n\(String(data: data, encoding: .utf8) ?? "<non-utf8>")\n")
-                }
-            }
+// АКТИВ: обычная сессия
+var req = URLRequest(url: url("api/analyze/"))
+req.httpMethod = "POST"
+req.setValue(mp.contentType, forHTTPHeaderField: "Content-Type")
+req.setValue("application/json", forHTTPHeaderField: "Accept")
+if let t = TokenStore.load()?.access { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
+req.httpBody = mp.data
 
-            guard (200..<300).contains(http.statusCode) else {
-                // Попробуем распарсить валидационные ошибки
-                if let dict = try? JSONDecoder().decode([String:[String]].self, from: data) {
-                    throw APIError.validation(dict)
-                }
-                throw APIError.http(http.statusCode, String(data: data, encoding: .utf8))
-            }
+let (data, resp) = try await session.data(for: req)
+guard let http = resp as? HTTPURLResponse else { throw APIError.decoding("Not an HTTP response") }
+return try parseAnalyzeResponse(data: data, http: http)
 
-            guard !data.isEmpty else {
-                // Вот источник «the data couldn’t be read because it is missing»
-                throw APIError.decoding("Empty body from /api/analyze/ (status \(http.statusCode))")
-            }
-
-            // Попробуем несколько форм: { ... }, { "meal": { ... } }, [ { ... } ]
-            let dec = JSONDecoder()
-            if let dto = try? dec.decode(AnalyzeDTO.self, from: data) {
-                return dto.toMeal()
-            }
-            if let wrap = try? dec.decode(MealWrapper.self, from: data) {
-                return wrap.meal.toMeal()
-            }
-            if let arr = try? dec.decode([AnalyzeDTO].self, from: data), let first = arr.first {
-                return first.toMeal()
-            }
-
-            throw APIError.decoding(String(data: data, encoding: .utf8) ?? "Unknown JSON")
-        }
+    }
 
         private struct MealWrapper: Decodable { let meal: AnalyzeDTO }
     }
@@ -1156,4 +1254,400 @@ extension AuthAPI {
                 image.draw(in: CGRect(origin: .zero, size: target))
             }
     }
+
+
+
+// AuthAPI.swift
+import UniformTypeIdentifiers
+import ImageIO
+
+private func makeJPEGUnderLimit(_ image: UIImage, maxBytes: Int = 900_000) -> Data {
+    guard let cg = image.cgImage else {
+        var q: CGFloat = 0.8
+        while q >= 0.4 {
+            if let d = image.jpegData(compressionQuality: q), d.count <= maxBytes { return d }
+            q -= 0.1
+        }
+        return image.jpegData(compressionQuality: 0.35) ?? Data()
+    }
+
+    let targetMaxDims: [CGFloat] = [2048, 1600, 1280, 1024, 900]
+    let qualities: [CGFloat] = [0.8, 0.7, 0.6, 0.5, 0.45, 0.4]
+
+    for dim in targetMaxDims {
+        let w = CGFloat(cg.width), h = CGFloat(cg.height)
+        let scale = min(1, dim / max(w, h))
+        let tw = Int(w * scale), th = Int(h * scale)
+
+        let cs = cg.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: tw, height: th,
+                                  bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { continue }
+        ctx.interpolationQuality = .high
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: tw, height: th))
+        guard let scaled = ctx.makeImage() else { continue }
+
+        for q in qualities {
+            let d = NSMutableData()
+            guard let dest = CGImageDestinationCreateWithData(d, UTType.jpeg.identifier as CFString, 1, nil) else { continue }
+            let opts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: q]
+            CGImageDestinationAddImage(dest, scaled, opts as CFDictionary)
+            CGImageDestinationFinalize(dest)
+            if d.length <= maxBytes { return d as Data }
+        }
+    }
+    return image.jpegData(compressionQuality: 0.35) ?? Data()
+}
+
+// ⬇️ Положи это в отдельный файл, напр. BackgroundAnalyze.swift
+
+import Foundation
+
+final class BackgroundAnalyze: NSObject, URLSessionTaskDelegate, URLSessionDataDelegate {
+    static let shared = BackgroundAnalyze()
+
+    private lazy var session: URLSession = {
+        let cfg = URLSessionConfiguration.background(withIdentifier: "com.snapai.bg.analyze")
+        cfg.waitsForConnectivity = true
+        cfg.timeoutIntervalForResource = 120
+        return URLSession(configuration: cfg, delegate: self, delegateQueue: nil)
+    }()
+
+    private var continuations: [Int: CheckedContinuation<(Data, HTTPURLResponse), Error>] = [:]
+    private var buffers: [Int: Data] = [:]
+    private var files: [Int: URL] = [:]
+
+    func upload(to url: URL, body: Data, headers: [String: String]) async throws -> (Data, HTTPURLResponse) {
+        // пишем тело во временный файл
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try body.write(to: tmp)
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        headers.forEach { req.setValue($0.value, forHTTPHeaderField: $0.key) }
+
+        let task = session.uploadTask(with: req, fromFile: tmp)
+        files[task.taskIdentifier] = tmp
+
+        return try await withCheckedThrowingContinuation { (c: CheckedContinuation<(Data, HTTPURLResponse), Error>) in
+            continuations[task.taskIdentifier] = c
+            task.resume()
+        }
+    }
+
+    // MARK: URLSessionDataDelegate
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        buffers[dataTask.taskIdentifier, default: Data()].append(data)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        let id = task.taskIdentifier
+        defer {
+            continuations[id] = nil
+            buffers[id] = nil
+            if let f = files.removeValue(forKey: id) { try? FileManager.default.removeItem(at: f) }
+        }
+
+        guard let cont = continuations[id] else { return }
+
+        if let error {
+            cont.resume(throwing: error)
+            return
+        }
+
+        guard let http = task.response as? HTTPURLResponse else {
+            cont.resume(throwing: APIError.decoding("Not an HTTP response"))
+            return
+        }
+
+        let data = buffers[id] ?? Data()
+        cont.resume(returning: (data, http))
+    }
+}
+
+
+
+//MARK: - patchMeal
+extension AuthAPI {
+    // PATCH /api/meals/{id}/
+    func patchMeal(id: String, from meal: Meal) async throws {
+            var fields: [String: Any] = [
+                "title":     meal.title,
+                "calories":  meal.calories,
+                "protein_g": meal.proteins,
+                "fat_g":     meal.fats,
+                "carbs_g":   meal.carbs,
+                "servings":  meal.servings
+            ]
+
+            // массив ингредиентов кодируем в JSON-строку, если так ожидает бэк
+            let arr = meal.ingredients.map { ["name": $0.name, "kcal": $0.kcal] }
+            if let data = try? JSONSerialization.data(withJSONObject: arr),
+               let str  = String(data: data, encoding: .utf8) {
+                fields["ingredients"] = str
+            }
+
+            if debugAPI {
+                if let pretty = try? JSONSerialization.data(withJSONObject: fields, options: .prettyPrinted),
+                   let s = String(data: pretty, encoding: .utf8) {
+                    print("📦 PATCH body for /api/meals/\(id)/:\n\(s)")
+                } else {
+                    print("📦 PATCH body for /api/meals/\(id)/: \(fields)")
+                }
+            }
+
+            struct Empty: Decodable {}
+            let _: Empty = try await sendJSON("PATCH", "api/meals/\(id)/", fields)
+        }
+
+    // POST /api/meals/{id}/recompute/
+        func recomputeMeal(id: String) async throws -> Meal {
+            let u = url("api/meals/\(id)/recompute/")
+            if debugAPI { print("➡️ POST \(u.absoluteString) (recompute)") }
+
+            var req = URLRequest(url: u)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            if let t = TokenStore.load()?.access { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
+
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw APIError.decoding("Not an HTTP response") }
+            return try parseAnalyzeResponse(data: data, http: http, endpoint: "/api/meals/\(id)/recompute/")
+        }
+    }
+
+
+
+//MARK: - listMeals
+// MARK: - listMeals / getMeal (с авторизацией через get())
+extension AuthAPI {
+    // Универсальный авторизованный GET, который умеет 401 -> refresh -> retry
+    private func getBytes(_ path: String, retried: Bool = false) async throws -> (Data, HTTPURLResponse) {
+            var req = URLRequest(url: url(path))
+            req.httpMethod = "GET"
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+
+            let isAuthless =
+                path.hasPrefix("api/auth/register/") ||
+                path.hasPrefix("api/auth/google/")   ||
+                path.hasPrefix("api/auth/apple/")    ||
+                path.hasPrefix("api/auth/token/")    ||
+                path.hasPrefix("api/auth/refresh/")
+
+            if !isAuthless, let t = TokenStore.load() {
+                req.setValue("Bearer \(t.access)", forHTTPHeaderField: "Authorization")
+            }
+
+            do {
+                let (data, resp) = try await session.data(for: req)
+                guard let http = resp as? HTTPURLResponse else { throw APIError.decoding("Not an HTTP response") }
+
+                if http.statusCode == 401 && !isAuthless {
+                    if !retried {
+                        if debugAPI { print("🔐 401 for \(path) → refresh() once") }
+                        do { _ = try await refresh() }
+                        catch { throw APIError.auth("refresh_failed: \(error.localizedDescription)") }
+                        return try await getBytes(path, retried: true)
+                    } else {
+                        throw APIError.auth("unauthorized_after_refresh")
+                    }
+                }
+
+                return (data, http)
+            } catch {
+                if let api = error as? APIError { throw api }
+                throw APIError.transport(error)
+            }
+        }
+    
+    private func parseMealsListResponse(data: Data, http: HTTPURLResponse, endpoint: String) throws -> [Meal] {
+        guard (200..<300).contains(http.statusCode) else {
+            if let dict = try? JSONDecoder().decode([String:[String]].self, from: data) {
+                throw APIError.validation(dict)
+            }
+            throw APIError.http(http.statusCode, String(data: data, encoding: .utf8))
+        }
+        guard !data.isEmpty else {
+            throw APIError.decoding("Empty body from /\(endpoint) (status \(http.statusCode))")
+        }
+
+        let dec = JSONDecoder()
+        if let arr = try? dec.decode([AnalyzeDTO].self, from: data) {
+            return arr.map { $0.toMeal() }
+        }
+        struct PageWrap: Decodable { let results: [AnalyzeDTO] }
+        if let wrap = try? dec.decode(PageWrap.self, from: data) {
+            return wrap.results.map { $0.toMeal() }
+        }
+        throw APIError.decoding(String(data: data, encoding: .utf8) ?? "Unknown JSON")
+    }
+
+    // 👇 Финальная версия listMeals
+    func listMeals(on date: Date) async throws -> [Meal] {
+        let df = DateFormatter(); df.locale = .init(identifier: "en_US_POSIX")
+        df.timeZone = .init(secondsFromGMT: 0); df.dateFormat = "yyyy-MM-dd"
+        let day = df.string(from: date)
+
+        // Попробуем несколько типовых вариантов фильтров — сервер выберет, какой поддерживает
+        let candidates = [
+            "api/meals/?date=\(day)",
+            "api/meals/?taken_at__date=\(day)",
+            "api/meals/?day=\(day)"
+        ]
+
+        for (idx, path) in candidates.enumerated() {
+            do {
+                if debugAPI { print("➡️ GET \(url(path).absoluteString)") }
+                let (data, http) = try await getBytes(path)
+                if debugAPI, let obj = try? JSONSerialization.jsonObject(with: data),
+                   let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: pretty, encoding: .utf8) {
+                    print("⬅️ \(http.statusCode) for \(path)\n\(str)\n")
+                }
+                let meals = try parseMealsListResponse(data: data, http: http, endpoint: path)
+                if debugAPI { print("✅ listMealsForDate: strategy[\(idx)] matched (\(path)) -> \(meals.count) items") }
+                return meals
+            } catch {
+                if debugAPI { print("⚠️ listMealsForDate: strategy[\(idx)] failed \(path): \(error)") }
+            }
+        }
+
+        if debugAPI { print("❌ listMealsForDate: no strategy worked") }
+        return [] // просто пусто, без падения
+    }
+}
+
+extension AuthAPI {
+    // GET /api/meals/{id}/  (использует общий getBytes + общий парсер)
+    func getMeal(id: Int) async throws -> Meal {
+        let path = "api/meals/\(id)/"
+        if debugAPI { print("➡️ GET \(url(path).absoluteString)") }
+
+        let (data, http) = try await getBytes(path)
+
+        if debugAPI,
+           let obj = try? JSONSerialization.jsonObject(with: data),
+           let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
+           let str = String(data: pretty, encoding: .utf8) {
+            print("⬅️ \(http.statusCode) for \(path)\n\(str)\n")
+        }
+
+        // тот же парсер, что используется в /api/analyze/
+        return try parseAnalyzeResponse(data: data, http: http, endpoint: path)
+    }
+}
+
+
+
+
+enum MealsLocalIndex {
+    private static func key(for date: Date) -> String {
+        let df = DateFormatter(); df.timeZone = .init(secondsFromGMT: 0); df.dateFormat = "yyyy-MM-dd"
+        return "meals.ids.\(df.string(from: date))"
+    }
+
+    static func add(id: Int, for date: Date) {
+        let k = key(for: date)
+        var ids = (UserDefaults.standard.array(forKey: k) as? [Int]) ?? []
+        if !ids.contains(id) { ids.append(id) }
+        UserDefaults.standard.set(ids, forKey: k)
+    }
+
+    static func ids(for date: Date) -> [Int] {
+        (UserDefaults.standard.array(forKey: key(for: date)) as? [Int]) ?? []
+    }
+
+    static func clear(for date: Date) {
+        UserDefaults.standard.removeObject(forKey: key(for: date))
+    }
+}
+
+
+
+
+extension AuthAPI {
+    struct RatingResponse: Decodable {
+        let id: Int
+        let stars: Int
+        let comment: String?
+        let sentToStore: Bool
+        let createdAt: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, stars, comment
+            case sentToStore = "sent_to_store"
+            case createdAt   = "created_at"
+        }
+    }
+
+    @discardableResult
+    func createRating(stars: Int, comment: String?, sentToStore: Bool) async throws -> RatingResponse {
+        var body: [String: Any] = [
+            "stars": stars,
+            "sent_to_store": sentToStore
+        ]
+        if let c = comment?.trimmingCharacters(in: .whitespacesAndNewlines), !c.isEmpty {
+            body["comment"] = c
+        }
+        return try await post("api/ratings/", body)
+    }
+}
+
+
+
+
+extension AuthAPI {
+    struct ReportDTO: Decodable {
+        let id: Int?
+        let name: String?
+        let phone_number: String?
+        let comment: String?
+        let photo: String?
+    }
+
+    @discardableResult
+    func createReport(
+        name: String,
+        phoneNumber: String,
+        comment: String,
+        image: UIImage?
+    ) async throws -> ReportDTO {
+        var mp = Multipart()
+        mp.addText(name: "name",         value: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        mp.addText(name: "phone_number", value: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines))
+        mp.addText(name: "comment",      value: comment.trimmingCharacters(in: .whitespacesAndNewlines))
+
+        if let img = image, let data = img.jpegData(compressionQuality: 0.8) {
+            mp.addFile(name: "photo", filename: "report.jpg", mime: "image/jpeg", file: data)
+        }
+        mp.finalize()
+
+        var req = URLRequest(url: url("api/reports/"))
+        req.httpMethod = "POST"
+        req.setValue(mp.contentType, forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let t = TokenStore.load()?.access {
+            req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = mp.data
+
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse else {
+            throw APIError.decoding("Not an HTTP response")
+        }
+
+        if (200..<300).contains(http.statusCode) {
+            // сервер может вернуть созданный объект или пусто
+            return (try? JSONDecoder().decode(ReportDTO.self, from: data)) ?? .init(id: nil, name: nil, phone_number: nil, comment: nil, photo: nil)
+        } else {
+            if let dict = try? JSONDecoder().decode([String:[String]].self, from: data) {
+                throw APIError.validation(dict) // увидим, какое поле «обязательное»
+            }
+            throw APIError.http(http.statusCode, String(data: data, encoding: .utf8))
+        }
+    }
+}
+
 

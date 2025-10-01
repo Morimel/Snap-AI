@@ -126,8 +126,20 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     SectionHeader(title: "Support service")
                     SectionCard {
-                        ChevronRow(title: "Support service") {
-                            // TODO: открыть чат/почту
+                        NavigationLink {
+                            SupportFormView()
+                                .navigationBarTitleDisplayMode(.inline)
+                        } label: {
+                            HStack {
+                                Text("Support service")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(AppColors.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(AppColors.primary)
+                            }
+                            .frame(height: 54)
+                            .padding(.horizontal, 16)
                         }
                         ChevronRow(title: "Terms") { }
                         ChevronRow(title: "Privacy") { }
@@ -142,6 +154,7 @@ struct SettingsView: View {
             }
             .padding(.vertical, 16)
         }
+        .scrollIndicators(.hidden)
         .background(AppColors.background.ignoresSafeArea())
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)

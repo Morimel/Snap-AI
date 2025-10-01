@@ -17,8 +17,14 @@ struct DateOfBirthStep: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedDate: Date =
-        Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+    @State private var selectedDate: Date = {
+        let cal = Calendar.current
+        // базовая дата: -25 лет от сегодня
+        let base = cal.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+        // ставим день = 16
+        return cal.date(bySetting: .day, value: 15, of: base) ?? base
+    }()
+
 
     var body: some View {
         VStack {

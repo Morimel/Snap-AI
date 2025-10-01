@@ -7,7 +7,8 @@
 
 import SwiftUI
 
-struct Meal: Codable {
+struct Meal: Codable, Hashable  {
+    var id: Int? = nil
     var title: String = ""
     var calories: Int = 0
     var proteins: Int = 0
@@ -16,6 +17,8 @@ struct Meal: Codable {
     var servings: Int = 1
     var benefitScore: Int = 0   
     var ingredients: [Ingredient] = []
+    
+    var imagePath: String? = nil
 }
 
 struct Ingredient: Identifiable, Codable, Hashable {
@@ -35,4 +38,8 @@ extension Meal {
             .init(name: "Rice", kcal: 340)
         ]
     )
+}
+
+extension Notification.Name {
+    static let dismissToMainFromEdit = Notification.Name("dismissToMainFromEdit")
 }

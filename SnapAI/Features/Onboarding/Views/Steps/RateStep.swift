@@ -135,8 +135,22 @@ struct RateStep: View {
         .sheet(isPresented: $showFeedbackForm) {
             FeedbackSheet(
                 rating: currentRating,
-                onSend: { _ in startSubmitting() },
-                onSkip: { startSubmitting() }
+                onSend: { text in
+                    Task {
+                        _ = try? await AuthAPI.shared.createRating(stars: currentRating,
+                                                               comment: text,
+                                                               sentToStore: false)
+                        startSubmitting()
+                    }
+                },
+                onSkip: {
+                    Task {
+                        _ = try? await AuthAPI.shared.createRating(stars: currentRating,
+                                                               comment: nil,
+                                                               sentToStore: false)
+                        startSubmitting()
+                    }
+                }
             )
         }
     }
@@ -155,15 +169,18 @@ struct RateStep: View {
     }
 
     private func rateAndProceed() {
+        guard currentRating > 0 else { return } // можно подсветить звёзды, если 0
+
         if currentRating >= 4 {
+            // не блокируем UX — отправляем «в фоне»
+            Task { try? await AuthAPI.shared.createRating(stars: currentRating, comment: nil, sentToStore: true) }
+
             pendingReviewLaunch = true
             if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
                 openURL(url)
             } else {
                 requestStoreReview()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    startSubmitting()
-                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
             }
         } else {
             showFeedbackForm = true

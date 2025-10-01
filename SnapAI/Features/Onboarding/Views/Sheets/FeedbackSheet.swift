@@ -7,6 +7,59 @@
 
 import SwiftUI
 
+// MARK: - PrettyTextEditor (плейсхолдер, рамка, счётчик, Done)
+struct PrettyTextEditor: View {
+    @Binding var text: String
+    var placeholder: String = "Write something…"
+    var limit: Int? = 250
+    var minHeight: CGFloat = 140
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(focused ? AppColors.primary : Color.white.opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 6)
+
+            TextEditor(text: Binding(
+                get: { text },
+                set: { new in
+                    if let limit { text = String(new.prefix(limit)) } else { text = new }
+                })
+            )
+            .background(.white)
+            .focused($focused)
+            .scrollContentBackground(.hidden)
+            .font(.system(size: 16, weight: .regular, design: .rounded))
+            .tint(AppColors.primary)
+            .padding(14)
+            .frame(minHeight: minHeight)
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text(placeholder)
+                        .foregroundStyle(AppColors.primary)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 16)
+                        .allowsHitTesting(false)
+                }
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                if let limit {
+                    Text("\(text.count)/\(limit)")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+}
+
 //MARK: - FeedbackSheet
 struct FeedbackSheet: View {
     let rating: Int
@@ -20,13 +73,15 @@ struct FeedbackSheet: View {
         NavigationView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("What could we improve?")
+                    .foregroundStyle(AppColors.primary)
                     .font(.headline)
                 
-                TextEditor(text: $text)
-                    .frame(minHeight: 140)
-                    .padding(8)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                PrettyTextEditor(
+                                    text: $text,
+                                    placeholder: "Tell us what was confusing, annoying, or missing…",
+                                    limit: 500,
+                                    minHeight: 140
+                                )
                 
                 Spacer()
                 
@@ -53,8 +108,21 @@ struct FeedbackSheet: View {
                 }
             }
             .padding()
-            .navigationTitle("Your feedback")
+            .background(AppColors.background.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Your feedback")
+                    
+                        .font(.headline)
+                        .foregroundStyle(AppColors.primary)
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
         }
     }
+}
+
+
+#Preview {
+    FeedbackSheet(rating: 3, onSend: { _ in }, onSkip: { })
 }

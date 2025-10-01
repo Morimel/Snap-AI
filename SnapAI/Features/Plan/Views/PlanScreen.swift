@@ -125,6 +125,7 @@ struct PlanScreen: View {
                     .background(AppColors.background.ignoresSafeArea())
                 }
             }
+            .scrollIndicators(.hidden)
             .navigationBarBackButtonHidden(true)
             .background(AppColors.background.ignoresSafeArea())
             .animation(

@@ -33,7 +33,7 @@ enum Goal: String, Codable { case lose, gain, maintain }
 struct OnboardingData: Codable {
     var email: String? 
     var gender: Gender?
-    var unit: UnitSystem = .metric
+    var unit: UnitSystem = .imperial
     var weight: Double?
     var height: Double?
     var birthDate: Date?

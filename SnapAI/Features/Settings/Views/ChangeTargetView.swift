@@ -79,6 +79,38 @@ struct ChangeTargetView: View {
             }
             .padding(.vertical, 20)
             
+            
+            Button("Save") {
+                Task {
+                    await onSave(calories, proteins, carbohydrates, fats)
+                    dismiss()
+                }
+            }
+            .buttonStyle(.plain) // убираем системные артефакты
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(AppColors.secondary)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
+            )
+            .overlay(
+                // верхняя мягкая подсветка
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(.white.opacity(0.9), lineWidth: 1)
+                    .blendMode(.overlay)
+                    .offset(y: -1)
+                    .mask(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(LinearGradient(colors: [.white, .clear],
+                                                 startPoint: .top, endPoint: .bottom))
+                    )
+            )
+            .foregroundStyle(.white)
+            .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
+            .zIndex(2)            
             Spacer()
         }
         .hideKeyboardOnTap()
@@ -104,14 +136,6 @@ struct ChangeTargetView: View {
                     .foregroundStyle(AppColors.primary)
             }
         }
-        .safeAreaInset(edge: .bottom) {
-                    StickyCTA(title: "Save") {
-                        Task {
-                            await onSave(calories, proteins, carbohydrates, fats)
-                            dismiss()
-                        }
-                    }
-                }
     }
 }
 

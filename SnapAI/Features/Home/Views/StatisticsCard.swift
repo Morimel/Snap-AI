@@ -7,6 +7,31 @@
 
 import SwiftUI
 
+extension Meal {
+    var kcalTotal:    Int { calories * max(servings, 1) }
+    var proteinTotal: Int { proteins * max(servings, 1) }
+    var fatTotal:     Int { fats     * max(servings, 1) }
+    var carbTotal:    Int { carbs    * max(servings, 1) }
+}
+
+extension StatisticsCard {
+    init(plan: PersonalPlan?, eatenMeals: [Meal]) {
+        let totals = eatenMeals.reduce(into: (k: 0, p: 0, f: 0, c: 0)) { acc, m in
+            acc.k += m.kcalTotal
+            acc.p += m.proteinTotal
+            acc.f += m.fatTotal
+            acc.c += m.carbTotal
+        }
+        self.init(
+            needKcal: plan?.dailyCalories ?? 0,
+            spentKcal: totals.k,
+            protein: (totals.p, plan?.protein ?? 0),
+            fat:     (totals.f, plan?.fat ?? 0),
+            carb:    (totals.c, plan?.carbs ?? 0)
+        )
+    }
+}
+
 //MARK: - StatisticsCard
 struct StatisticsCard: View {
     

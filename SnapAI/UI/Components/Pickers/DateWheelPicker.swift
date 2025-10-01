@@ -107,12 +107,18 @@ struct DateWheelPicker: View {
     }
 }
 
-#Preview("Date picker") {
-    @State var date = Date()
-    return ZStack {
-        Color.black.ignoresSafeArea()
-        DateWheelPicker(selected: $date)
-            .preferredColorScheme(.dark)
-            .tint(AppColors.primary)
+private struct DatePickerPreviewContainer: View {
+    @State private var date = Date()
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            DateWheelPicker(selected: $date)
+                .preferredColorScheme(.dark)
+                .tint(AppColors.primary)
+        }
     }
+}
+
+#Preview("Date picker") {
+    DatePickerPreviewContainer()
 }

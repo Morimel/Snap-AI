@@ -120,6 +120,7 @@
 				Features/Settings/Views/WeightPickerSheet.swift,
 				"Features/Splash/Launch Screen.storyboard",
 				Features/Splash/SplashScreen.swift,
+				Features/SupportService/Views/SupportServiceScreen.swift,
 				Resources/Assets.xcassets,
 				UI/Components/Buttons/CapsuleButtonStyle.swift,
 				UI/Components/Buttons/CapsuleNavigationButton.swift,
@@ -158,6 +159,7 @@
 				Features/Onboarding/Models/OnboardingPhase.swift,
 				Features/Plan/Views/BulletListBox.swift,
 				Features/Plan/Views/BulletRow.swift,
+				Features/SupportService/Views/SupportServiceScreen.swift,
 				Info.plist,
 				Resources/Assets.xcassets,
 				UI/Components/Progress/ProgressBar.swift,
@@ -543,7 +545,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 693RJ6S5KS;
+				DEVELOPMENT_TEAM = BU62LMXDW8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnapAI/Info.plist;
@@ -560,7 +562,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.SnapAI.SnapAI;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adconcept.snapai.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -579,7 +581,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 693RJ6S5KS;
+				DEVELOPMENT_TEAM = BU62LMXDW8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnapAI/Info.plist;
@@ -596,7 +598,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.SnapAI.SnapAI;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adconcept.snapai.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

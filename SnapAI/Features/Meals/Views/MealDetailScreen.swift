@@ -16,12 +16,14 @@ struct MealDetailScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var servings = 1
     var onClose: (() -> Void)? = nil
+    private let chromeOpacity: Double = 0.6
+    @Environment(\.scenePhase) private var scenePhase
+    
+    @State private var showAddIngredient = false
     
     @FocusState private var focusedField: Field?
     private enum Field: Hashable { case servings }
     
-    private let chromeOpacity: Double = 0.6   /// нужная прозрачность
-
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
@@ -38,6 +40,7 @@ struct MealDetailScreen: View {
                         ))
                         .disabled(true)
                         .padding()
+                        .foregroundStyle(AppColors.primary)
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                         .overlay {
@@ -53,7 +56,7 @@ struct MealDetailScreen: View {
                                     title: "Servings",
                                     value: Binding(
                                         get: { vm.meal.servings },
-                                        set: { newVal in var m = vm.meal; m.servings = newVal; vm.meal = m }
+                                        set: { newVal in vm.update { $0.servings = newVal } }
                                     ),
                                     field: .servings,
                                     focused: $focusedField
@@ -122,11 +125,7 @@ struct MealDetailScreen: View {
 
                         IngredientList(ingredients: Binding(
                             get: { vm.meal.ingredients },
-                            set: { newValue in
-                                var m = vm.meal
-                                m.ingredients = newValue
-                                vm.meal = m
-                            }
+                            set: { newValue in vm.update { $0.ingredients = newValue } }
                         ))
 
                         Button {
@@ -182,6 +181,7 @@ struct MealDetailScreen: View {
                         .padding(.bottom, 12)
                 }
             }
+            .scrollIndicators(.hidden)
 
             // Лоадер анализа
             if vm.isScanning {
@@ -194,25 +194,23 @@ struct MealDetailScreen: View {
 
             
         }
-        .navigationDestination(isPresented: $showEditor) {
-            MealEditSheet(
-                vm: vm,
-                isPresented: Binding(
-                    get: { true },
-                    set: { newVal in
-                        if newVal == false {
-                            showEditor = false
-                        }
-                    }
-                )
-            )
+        .onReceive(NotificationCenter.default.publisher(for: .dismissToMainFromEdit)) { _ in
+            if let onClose { onClose() } else { dismiss() }
         }
+        .sheet(isPresented: $showEditor) {
+            MealEditSheet(vm: vm, isPresented: $showEditor)
+        }
+        .sheet(isPresented: $showAddIngredient) {
+                    AddIngredientSheet { newIng in
+                        vm.update { $0.ingredients.append(newIng) }       // 👈 добавить
+                    }
+                }
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 CircleIconButton {
-                                    onClose?()
+                    if let onClose { onClose() } else { dismiss() }
                                 }
                     .foregroundStyle(.black)
                     .opacity(chromeOpacity)
@@ -231,8 +229,17 @@ struct MealDetailScreen: View {
         }
         .ignoresSafeArea()
         .task {
-            if vm.meal.title.isEmpty {
-                await vm.scan(image: image)
+                    vm.restoreFromCache()                 // ⬅️ если есть — поднимем
+                    if vm.meal.title.isEmpty && !vm.isScanning {
+                        await vm.scan(image: image)       // ⬅️ только если реально пусто
+                    }
+                }
+        .onChange(of: scenePhase) { phase in
+            if phase == .inactive || phase == .background {
+                vm.cancelScan()            // ⛔️ отменяем активный аплоад
+                // при желании — закрыть редактор и вернуться на главный:
+                // showEditor = false
+                // if let onClose { onClose() } else { dismiss() }
             }
         }
         .alert("Error", isPresented: Binding(get: { vm.error != nil }, set: { _ in vm.error = nil })) {
@@ -244,6 +251,8 @@ struct MealDetailScreen: View {
 // MARK: - Ingredients
 struct IngredientList: View {
     @Binding var ingredients: [Ingredient]
+    var showAddButton: Bool = true
+    var onAddTap: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 12) {
@@ -252,16 +261,13 @@ struct IngredientList: View {
                     ingredients.remove(at: i)
                 }
             }
-
-            Button {
-                withAnimation {
-                    ingredients.append(Ingredient(name: "", kcal: 0))
-                }
-            } label: {
-                Image(systemName: "plus").font(.title3).padding()
-            }
-            .buttonStyle(CapsuleButtonStyle())
-            .frame(maxWidth: .infinity, alignment: .center)
+            if showAddButton {
+                            Button(action: onAddTap) {
+                                Image(systemName: "plus").font(.title3).padding()
+                            }
+                            .buttonStyle(CapsuleButtonStyle())
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        }
         }
     }
 }
