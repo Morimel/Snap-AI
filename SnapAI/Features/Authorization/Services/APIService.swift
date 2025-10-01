@@ -37,6 +37,18 @@ struct RegisterStartResponse: Decodable {
     }
 }
 
+// ✅ Только это расширение для nonce
+extension AppleSignInCoordinator {
+    var currentRawNonce: String? { currentNonce }
+
+    @discardableResult
+    func performNonceSetup(on request: ASAuthorizationAppleIDRequest) -> String {
+        let raw = randomNonceString()      // сделай randomNonceString/sha256 как fileprivate в классе
+        currentNonce = raw
+        request.nonce = sha256Hex(raw)        // Apple ждёт SHA256(raw)
+        return raw
+    }
+}
 
 
 struct TokenPair: Decodable {
@@ -103,7 +115,7 @@ final class AuthAPI {
     
     private struct EmptyResponse: Decodable {}
 
-    private let baseURL = URL(string: "https://snap-ai-app.com")!
+    private let baseURL = URL(string: "https://snapaibackend.pythonanywhere.com")!
     private let debugAPI = true
     
     private func url(_ path: String) -> URL {
@@ -599,13 +611,19 @@ extension AuthAPI {
 }
 
 
+import CryptoKit
+
 extension AuthAPI {
-    func socialApple(idToken: String, nonce: String? = nil) async throws -> TokenPair {
-        var body: [String: Any] = ["id_token": idToken]
-        if let nonce { body["nonce"] = nonce }   // если бэк захочет сверять nonce — отправим
-        return try await post("api/auth/apple/", body)
+    func socialApple(idToken: String, nonceRaw: String) async throws -> TokenPair {
+        try await post("api/auth/apple/", [
+            "id_token": idToken,
+            "nonce": nonceRaw
+            // nonce_sha256 можно не слать, если не требуется
+        ])
     }
 }
+
+
 
 
 extension AuthAPI {
@@ -735,7 +753,7 @@ final class AppleSignInCoordinator: NSObject {
         // nonce: best practice для противодействия replay
         let rawNonce = randomNonceString()
         currentNonce = rawNonce
-        request.nonce = sha256(rawNonce)
+        request.nonce = sha256Hex(rawNonce)
 
         let ctrl = ASAuthorizationController(authorizationRequests: [request])
         ctrl.delegate = self
@@ -764,11 +782,36 @@ final class AppleSignInCoordinator: NSObject {
         return result
     }
 
-    private func sha256(_ input: String) -> String {
-        let hashed = SHA256.hash(data: Data(input.utf8))
-        return hashed.map { String(format: "%02x", $0) }.joined()
+    func sha256Hex(_ s: String) -> String {
+        SHA256.hash(data: Data(s.utf8)).map { String(format:"%02x",$0) }.joined()
     }
 }
+
+enum HashUtils {
+    static func sha256Hex(_ s: String) -> String {
+        SHA256.hash(data: Data(s.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+func debugValidateAppleJWT(idToken: String, rawNonce: String) {
+    guard let claims = JWTTools.payload(idToken) else {
+        print("❌ cannot decode JWT payload")
+        return
+    }
+    let claimNonce = claims["nonce"] as? String
+    let aud        = claims["aud"] as? String
+    let expect     = HashUtils.sha256Hex(rawNonce)
+
+    print("""
+    🔎 Apple JWT check:
+      aud(claim)   = \(aud ?? "nil")
+      nonce(claim) = \(claimNonce ?? "nil")
+      nonce(expect)= \(expect)
+    """)
+    if claimNonce == expect { print("✅ nonce matches sha256(rawNonce)") }
+    else { print("❌ nonce mismatch") }
+}
+
 
 extension AppleSignInCoordinator: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
@@ -807,12 +850,18 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
         case .success(let payload):
             Task {
                 do {
-                    let pair = try await AuthAPI.shared.socialApple(idToken: payload.idToken, nonce: payload.nonce)
-                    handleAuthSuccess(pair)
-                    CurrentUser.ensureIdFromJWTIfNeeded()
-                    await MainActor.run { router.replace(with: [.gender]) }
-                    UserDefaults.standard.set(true, forKey: AuthFlags.isRegistered)
-                    await MainActor.run { router.replace(with: [.gender]) }
+                    let raw = payload.nonce ?? ""
+                    #if DEBUG
+                    if let claims = JWTTools.payload(payload.idToken),
+                       let claimNonce = claims["nonce"] as? String {
+                        let expect = HashUtils.sha256Hex(raw)
+                        print("aud=\(claims["aud"] ?? "nil"), nonce(claim)=\(claimNonce), expect=\(expect)")
+                        assert(claimNonce == expect, "Apple nonce claim != sha256(rawNonce)")
+                    }
+                    #endif
+
+                    let pair = try await AuthAPI.shared.socialApple(idToken: payload.idToken, nonceRaw: raw)
+                    // ...
                 } catch {
                     print("Apple token exchange failed:", error)
                 }
@@ -824,7 +873,7 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
 
 
 //MARK: - handleAuthSuccess
-private func handleAuthSuccess(_ pair: TokenPair) {
+func handleAuthSuccess(_ pair: TokenPair) {
     TokenStore.save(.init(access: pair.access, refresh: pair.refresh))
     if let u = pair.user {
         UserStore.save(id: u.id, email: u.email)
@@ -864,7 +913,10 @@ func signInWithApple(onAuthSuccess: @escaping () -> Void) {
         case .success(let payload):
             Task {
                 do {
-                    let pair = try await AuthAPI.shared.socialApple(idToken: payload.idToken, nonce: payload.nonce)
+                    let pair = try await AuthAPI.shared.socialApple(
+                        idToken: payload.idToken,
+                        nonceRaw: payload.nonce ?? ""
+                    )
                     handleAuthSuccess(pair)
                     await MainActor.run { onAuthSuccess() }
                 } catch {

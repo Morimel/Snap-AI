@@ -136,23 +136,28 @@ struct RateStep: View {
             FeedbackSheet(
                 rating: currentRating,
                 onSend: { text in
-                    Task {
-                        _ = try? await AuthAPI.shared.createRating(stars: currentRating,
-                                                               comment: text,
-                                                               sentToStore: false)
-                        startSubmitting()
+                    // 1) Сразу переходим к сабмиту UX
+                    startSubmitting()
+                    // 2) Отправляем отзыв асинхронно, не блокируя переход
+                    Task.detached {
+                        _ = try? await AuthAPI.shared.createRating(stars: currentRating, comment: text, sentToStore: false)
                     }
                 },
                 onSkip: {
+                    // 1) Сразу переходим
+                    startSubmitting()
+                    // 2) Отправляем «оценку без текста» в фоне
                     Task {
-                        _ = try? await AuthAPI.shared.createRating(stars: currentRating,
-                                                               comment: nil,
-                                                               sentToStore: false)
-                        startSubmitting()
+                        _ = try? await AuthAPI.shared.createRating(
+                            stars: currentRating,
+                            comment: nil,
+                            sentToStore: false
+                        )
                     }
                 }
             )
         }
+
     }
 
     // MARK: - Хелперы
@@ -169,20 +174,37 @@ struct RateStep: View {
     }
 
     private func rateAndProceed() {
-        guard currentRating > 0 else { return } // можно подсветить звёзды, если 0
+        guard currentRating > 0 else { return }
 
         if currentRating >= 4 {
-            // не блокируем UX — отправляем «в фоне»
-            Task { try? await AuthAPI.shared.createRating(stars: currentRating, comment: nil, sentToStore: true) }
+            // отправим оценку «в фоне»
+            Task {
+                try? await AuthAPI.shared.createRating(
+                    stars: currentRating,
+                    comment: nil,
+                    sentToStore: true
+                )
+            }
 
-            pendingReviewLaunch = true
+            // пытаемся открыть App Store с формой отзыва
             if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
-                openURL(url)
+                openURL(url) { accepted in   // accepted: Bool
+                    if accepted {
+                        pendingReviewLaunch = true
+                    } else {
+                        pendingReviewLaunch = false
+                        requestStoreReview()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
+                    }
+                }
             } else {
+                // URL не собрался — сразу fallback
                 requestStoreReview()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
             }
+
         } else {
+            // рейтинг 1–3 → открываем форму фидбэка (там по onSend/onSkip уже вызывается startSubmitting())
             showFeedbackForm = true
         }
     }

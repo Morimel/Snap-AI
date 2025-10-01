@@ -16,6 +16,12 @@ struct SnapAIApp: App {
         WindowGroup {
             RootContainer()
                 .environmentObject(paywall)
+                .task {
+                                    #if DEBUG
+                                    // 1 «день» = 10 секунд → триал 70 секунд, «месяц» ~5 минут
+                                    paywall.debug_setSecondsPerDay(10)
+                                    #endif
+                                }
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)   /// возврат из Google
                 }
@@ -105,8 +111,8 @@ private struct RootContainer: View {
         .fullScreenCover(isPresented: $paywallPresented) {
             PayWallScreen(
                 mode: paywall.mode,
-                onStartTrial: { paywall.startGraceMinuteAndClose() },
-                onProceed:    { paywall.payStub() }
+                onStartTrial: { paywall.startTrialAndClose() },          // ⬅️ новое имя
+                onProceed:    { product in paywall.payStub(for: product) } // ⬅️ передаём продукт
             )
         }
         .onReceive(paywall.$isShowing.removeDuplicates()) { paywallPresented = $0 }

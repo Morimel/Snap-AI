@@ -12,7 +12,7 @@ struct PayWallScreen: View {
     
     var mode: PaywallMode
     var onStartTrial: () -> Void    
-    var onProceed: () -> Void
+    var onProceed: (Product) -> Void
     
     private let imageYOffset: CGFloat = 124
     private let sheetYOffset: CGFloat = -12
@@ -83,7 +83,7 @@ struct PayWallScreen: View {
                                 if mode == .trialOffer {
                                     onStartTrial()
                                 } else {
-                                    onProceed()
+                                    onProceed(selected)
                                 }
                             },
                             mode: mode
@@ -123,7 +123,7 @@ private struct PaywallPreview: View {
             PayWallScreen(
                 mode: .trialOffer,
                 onStartTrial: {},
-                onProceed: {}
+                onProceed: {_ in }
             )
         }
     }
