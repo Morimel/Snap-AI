@@ -11,11 +11,13 @@ import GoogleSignIn
 @main
 struct SnapAIApp: App {
     @StateObject private var paywall = PaywallCenter()
+    @StateObject private var router  = OnboardingRouter()
 
     var body: some Scene {
         WindowGroup {
             RootContainer()
                 .environmentObject(paywall)
+                .environmentObject(router)  
                 .task {
                                     #if DEBUG
                                     // 1 «день» = 10 секунд → триал 70 секунд, «месяц» ~5 минут

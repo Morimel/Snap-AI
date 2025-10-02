@@ -79,11 +79,11 @@ struct NewPasswordView: View {
         } catch APIError.validation(let map) {
             fieldErrors = map
         } catch APIError.http(let code, let body) {
-            generalError = "Ошибка сервера (\(code)). \(body ?? "")"
+            generalError = "Server error (\(code)). \(body ?? "")"
         } catch APIError.decoding(let msg) {
-            generalError = "Неверный формат ответа: \(msg)"
+            generalError = "Invalid format of response: \(msg)"
         } catch {
-            generalError = "Не удалось отправить запрос. Проверьте интернет."
+            generalError = "Не удалось отправить запрос. проверить интернет."
         }
     }
 }
@@ -102,15 +102,15 @@ struct NewPasswordRegister: View {
     // MARK: - Validation
     private var passwordError: String? {
         guard !password.isEmpty else { return nil }
-        if password.count < 8 { return "Пароль должен быть не короче 8 символов" }
+        if password.count < 8 { return "The password must be more than 8 characters long." }
         if password.range(of: "[A-Z]", options: .regularExpression) == nil {
-            return "Пароль должен содержать хотя бы одну заглавную букву"
+            return "The password must contain at least one capital letter"
         }
         return nil
     }
     private var confirmError: String? {
         guard !confirm.isEmpty else { return nil }
-        return (confirm == password) ? nil : "Пароли не совпадают"
+        return (confirm == password) ? nil : "The passwords don't match"
     }
     private var isFormValid: Bool {
         passwordError == nil && confirmError == nil && !password.isEmpty && !confirm.isEmpty

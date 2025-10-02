@@ -115,7 +115,7 @@ final class AuthAPI {
     
     private struct EmptyResponse: Decodable {}
 
-    private let baseURL = URL(string: "https://snapaibackend.pythonanywhere.com")!
+    private let baseURL = URL(string: "https://snap-ai-app.com")!
     private let debugAPI = true
     
     private func url(_ path: String) -> URL {
@@ -957,13 +957,16 @@ extension AuthAPI {
 extension AuthAPI {
     func updateProfile(from data: OnboardingData) async throws {
         CurrentUser.ensureIdFromJWTIfNeeded()
-        guard let userId = UserStore.id() else { throw APIError.http(400, "No user id") }
+
+        // ⚠️ именно profileId (если вдруг нет — резервно userId)
+        guard let profileId = UserStore.profileId() ?? UserStore.id()
+        else { throw APIError.http(400, "No profile id") }
 
         var fields: [String: Any] = [:]
         let units = (data.unit == .imperial) ? "imperial" : "metric"
         fields["units"] = units
 
-        if let g = data.gender { fields["gender"] = g.rawValue }
+        if let g = data.gender      { fields["gender"] = g.rawValue }
         if let dob = data.birthDate {
             let df = DateFormatter(); df.timeZone = .init(secondsFromGMT: 0); df.dateFormat = "yyyy-MM-dd"
             fields["date_of_birth"] = df.string(from: dob)
@@ -980,13 +983,28 @@ extension AuthAPI {
 
         if let wkg = kg(data.weight)        { fields["weight_kg"] = wkg }
         if let hcm = cm(data.height)        { fields["height_cm"] = hcm }
-        if let dkg = kg(data.desiredWeight) { fields["desired_weight_kg"] = dkg }
-        if let act = data.lifestyle         { fields["activity"] = act.rawValue }
-        if let goal = data.goal             { fields["goal"] = goal.rawValue }
+        if let act  = data.lifestyle        { fields["activity"] = act.rawValue }
+        if let goal = data.goal             { fields["goal"] = goal.apiValue }
 
-        try await patchProfile(id: userId, fields: fields) // <-- ИМЕННО userId
+        // ✅ desired_weight_kg: передаём число или явно чистим
+        if data.goal == .maintain {
+            fields["desired_weight_kg"] = NSNull()          // занулить на бэке
+        } else if let dkg = kg(data.desiredWeight) {
+            fields["desired_weight_kg"] = dkg               // сохранить
+        } else {
+            // если пусто — тоже очищаем
+            fields["desired_weight_kg"] = NSNull()
+        }
+
+        print("📦 PATCH profile \(profileId): \(fields)")
+        try await patchProfile(id: profileId, fields: fields)
+
+        await MainActor.run {
+            NotificationCenter.default.post(name: .profileDidChange, object: nil)
+        }
     }
 }
+
 
 extension Notification.Name {
     static let profileDidChange = Notification.Name("profileDidChange")

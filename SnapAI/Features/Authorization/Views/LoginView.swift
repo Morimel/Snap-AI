@@ -36,6 +36,12 @@ struct LoginView: View {
                                     .frame(width: 44, height: 44)
                             }
                             .padding(.horizontal, 16)
+                    
+                    Text("Please log in using the same method\nyou used to register.")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(AppColors.primary)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .multilineTextAlignment(.center)
 
                     AuthScreenLogin(onContinue: {
                         if paywall.hasPayed {

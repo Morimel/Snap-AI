@@ -6,16 +6,21 @@
 //
 
 import SwiftUI
+import GoogleSignIn
 
 // MARK: - Settings Screen
 struct SettingsView: View {
     @ObservedObject var vm: OnboardingViewModel
+    
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
     
     @State private var gender = "—"
     @State private var age = "—"
     @State private var height = "—"
     @State private var weight = "—"
     @State private var goal = "—"
+    
+    @State private var targetWeight = "—"
     
     @State private var planLoading = false
         @State private var planError: String?
@@ -43,7 +48,7 @@ struct SettingsView: View {
                     KeyValueRow(key: "Age", value: age)
                     KeyValueRow(key: "Height", value: height)
                     KeyValueRow(key: "Weight", value: weight)
-                    KeyValueRow(key: "Goal", value: goal)
+                    KeyValueRow(key: "Goal", value: targetWeight)
                 }
                 
                 // Персонализация
@@ -141,10 +146,56 @@ struct SettingsView: View {
                             .frame(height: 54)
                             .padding(.horizontal, 16)
                         }
-                        ChevronRow(title: "Terms") { }
-                        ChevronRow(title: "Privacy") { }
+                        NavigationLink {
+                            TermsOfServiceScreen(appName: "SnapAI",
+                                                 company: "SnapAI",
+                                                 email: "support@example.com",
+                                                 effectiveDate: "01.10.2025")
+                                .navigationBarTitleDisplayMode(.inline)
+                        } label: {
+                            HStack {
+                                Text("Terms")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(AppColors.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(AppColors.primary)
+                            }
+                            .frame(height: 54)
+                            .padding(.horizontal, 16)
+                        }
+                        NavigationLink {
+                            PrivacyPolicyScreen(appName: "SnapAI",
+                                                company: "SnapAI",
+                                                email: "support@example.com",
+                                                effectiveDate: "01.10.2025")
+                                .navigationBarTitleDisplayMode(.inline)
+                        } label: {
+                            HStack {
+                                Text("Privacy")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(AppColors.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(AppColors.primary)
+                            }
+                            .frame(height: 54)
+                            .padding(.horizontal, 16)
+                        }
                     }
                 }
+                
+                Button {
+                            goToStartView()            // ⬅️ просто отправляем на старт
+                        } label: {
+                            Text("Sign Out")
+                                .font(.headline)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
                 
                 Text("App version: 1.0.0")
                     .font(.footnote)
@@ -190,6 +241,15 @@ struct SettingsView: View {
         }
 
     }
+    
+    
+    private func goToStartView() {
+        hasOnboarded = false        // RootContainer сам переключится на онбординг
+        dismiss()                   // если Settings открыт модально — закрыть
+    }
+
+
+
     
     // MARK: - Load plan
        private func loadPlan() async {
@@ -247,8 +307,46 @@ struct SettingsView: View {
         
         do {
             let p = try await AuthAPI.shared.getProfile(id: id)
+
+            // ⚠️ Синхронизируем VM с профилем (ключевой момент)
             await MainActor.run {
-                applyProfile(p)
+                // units
+                let unitsStr = (p.units ?? "metric").lowercased()
+                vm.data.unit = (unitsStr == "imperial") ? .imperial : .metric
+
+                // gender
+                if let g = p.gender?.lowercased() {
+                    vm.data.gender = Gender(rawValue: g) // убедись, что rawValue совпадает ("male"/"female")
+                }
+
+                // dob
+                if let dob = p.date_of_birth {
+                    let df = DateFormatter(); df.timeZone = .init(secondsFromGMT: 0); df.dateFormat = "yyyy-MM-dd"
+                    vm.data.birthDate = df.date(from: dob)
+                }
+
+                // рост / вес / цель
+                if let h = p.height_cm { vm.data.height = unitsStr == "imperial" ? Double(h) / 2.54 : Double(h) }
+                if let w = p.weight_kg { vm.data.weight = unitsStr == "imperial" ? Double(w) * 2.20462262 : Double(w) }
+                if let d = p.desired_weight_kg {
+                    vm.data.desiredWeight = unitsStr == "imperial" ? Double(d) * 2.20462262 : Double(d)
+                } else {
+                    vm.data.desiredWeight = nil
+                }
+
+                // активность/goal (следи за rawValue)
+                if let act = p.activity?.lowercased() { vm.data.lifestyle = Lifestyle(rawValue: act) }
+                if let goalStr = p.goal, let g = Goal(rawValue: goalStr) {
+                                vm.data.goal = g
+                            }
+            }
+
+            await MainActor.run {
+                
+                vm.data.fill(from: p)   // Внутри fill(from:) уже есть self.goal = Goal(rawValue: g) — оставь,
+                                            // но лучше замени на Goal(api: g) для гибкости:
+                    // if let g = p.goal?.lowercased() { self.goal = Goal(api: g) ?? self.goal }
+                applyProfile(p)      // как и было — заполнение строк для UI
                 loading = false
             }
         } catch {
@@ -262,32 +360,47 @@ struct SettingsView: View {
     
     
     private func applyProfile(_ p: Profile) {
-        // gender
+        // gender/age
         gender = (p.gender ?? "-").capitalized
-        
-        // age (из "yyyy-MM-dd" или ISO8601)
-        age = ageString(from: p.date_of_birth)
-        
+        age    = ageString(from: p.date_of_birth)
+
         // units
         let units = (p.units ?? "metric").lowercased()
-        
+
         // height
         if let cm = p.height_cm {
-            height = (units == "imperial") ? feetInchesString(cm: cm) : "\(cm) cm"
+            height = (units == "imperial") ? feetInchesString(cm: cm) : "\(Int(round(Double(cm)))) cm"
         } else { height = "—" }
-        
-        // weight
-        if let kg = p.weight_kg {
-            weight = (units == "imperial") ? "\(Int(round(Double(kg) * 2.20462262))) lbs" : "\(kg) kg"
-        } else { weight = "—" }
-        
-        // goal (целевой вес)
-        if let targetKg = p.desired_weight_kg {
-            goal = (units == "imperial") ? "\(Int(round(Double(targetKg) * 2.20462262))) lbs"
-            : "\(targetKg) kg"
-        } else { goal = "—" }
+
+        // current weight (строка)
+        let currentWeightStr: String = {
+            guard let kg = p.weight_kg else { return "—" }
+            let val = (units == "imperial") ? Int(round(Double(kg) * 2.20462262)) : Int(round(Double(kg)))
+            return "\(val) " + ((units == "imperial") ? "lbs" : "kg")
+        }()
+
+        // target weight (строка). Если maintain (desired_weight_kg == null) — показываем текущий вес
+        let targetWeightStr: String = {
+            if let tkg = p.desired_weight_kg {
+                let val = (units == "imperial") ? Int(round(Double(tkg) * 2.20462262)) : Int(round(Double(tkg)))
+                return "\(val) " + ((units == "imperial") ? "lbs" : "kg")
+            } else {
+                return currentWeightStr
+            }
+        }()
+
+        // goal (только текст цели)
+        if let g = p.goal?.lowercased(), let goalEnum = Goal(api: g) {
+            goal = goalEnum.displayName
+        } else {
+            goal = "—"
+        }
+
+        // присваиваем строки
+        weight       = currentWeightStr
+        targetWeight = targetWeightStr
     }
-    
+
     
     private func ageString(from dob: String?) -> String {
         guard let dob else { return "—" }
@@ -323,3 +436,4 @@ private struct SettingsView_Preview: View {
         }
     }
 }
+

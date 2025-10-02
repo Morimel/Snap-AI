@@ -109,13 +109,24 @@ struct RateStep: View {
 
             Spacer()
 
-            Button { rateAndProceed() } label: {
-                Text("Rate")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 60)
-                    .foregroundColor(.white)
-                    .background(AppColors.secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
+            VStack(spacing: 12) {
+                Button { rateAndProceed() } label: {
+                    Text("Rate")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .foregroundColor(.white)
+                        .background(AppColors.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+
+                // 🔽 новая кнопка Skip
+                Button { skipAndProceed() } label: {
+                    Text("Skip for now")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(AppColors.primary)
             }
             .padding(.bottom, 28)
         }
@@ -130,6 +141,12 @@ struct RateStep: View {
                 Text("Rate Us")
                     .font(.system(size: 24, weight: .regular))
                     .foregroundStyle(AppColors.primary)
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active, pendingReviewLaunch {
+                pendingReviewLaunch = false
+                startSubmitting()
             }
         }
         .sheet(isPresented: $showFeedbackForm) {
@@ -160,6 +177,12 @@ struct RateStep: View {
 
     }
 
+    private func skipAndProceed() {
+        // если нужно, можно залогировать «скип» на бэк — раскомментируй при необходимости:
+         Task { _ = try? await AuthAPI.shared.createRating(stars: 0, comment: "skipped", sentToStore: false) }
+        startSubmitting()
+    }
+    
     // MARK: - Хелперы
     private func requestStoreReview() {
         if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
@@ -173,26 +196,24 @@ struct RateStep: View {
         vm.phase = .submitting
     }
 
+
     private func rateAndProceed() {
         guard currentRating > 0 else { return }
 
         if currentRating >= 4 {
-            // отправим оценку «в фоне»
+            // отправляем рейтинг на свой бэк «в фоне»
             Task {
-                try? await AuthAPI.shared.createRating(
-                    stars: currentRating,
-                    comment: nil,
-                    sentToStore: true
-                )
+                try? await AuthAPI.shared.createRating(stars: currentRating,
+                                                       comment: nil,
+                                                       sentToStore: true)
             }
 
-            // пытаемся открыть App Store с формой отзыва
-            if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
-                openURL(url) { accepted in   // accepted: Bool
+            // пробуем открыть App Store с формой отзыва
+            if let url = URL(string: "itms-apps://itunes.apple.com/app/id<APPLE_ID>?action=write-review") {
+                openURL(url) { accepted in
                     if accepted {
                         pendingReviewLaunch = true
                     } else {
-                        pendingReviewLaunch = false
                         requestStoreReview()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
                     }
@@ -200,14 +221,16 @@ struct RateStep: View {
             } else {
                 // URL не собрался — сразу fallback
                 requestStoreReview()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { startSubmitting() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    startSubmitting()
+                }
             }
-
         } else {
-            // рейтинг 1–3 → открываем форму фидбэка (там по onSend/onSkip уже вызывается startSubmitting())
+            // 1–3 звезды → ваш фидбэк-экран (там уже вызывается startSubmitting())
             showFeedbackForm = true
         }
     }
+
 }
 
 #Preview {

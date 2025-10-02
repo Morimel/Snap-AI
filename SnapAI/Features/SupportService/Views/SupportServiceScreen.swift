@@ -23,6 +23,16 @@ struct Country: Identifiable, Hashable {
     }
 }
 
+private enum DialCodeFix {
+    // спорные/нестандартные страны
+    static let overrides: [String: String] = [
+        "AX": "+358", // Åland
+        "VA": "+39",  // Vatican фактически живёт на итальянском +39
+        "EH": "+212", // Western Sahara -> Morocco
+        "UM": "+1"    // US Outlying Islands -> NANP
+    ]
+}
+
 enum CountryProvider {
     private static var cache: [Country]?
     
@@ -46,23 +56,44 @@ enum CountryProvider {
     }
     
     private static func primaryDialCode(for c: RC) -> String? {
-        guard let r = c.idd?.root, !r.isEmpty else {
-            if let s = c.idd?.suffixes?.first, !s.isEmpty { return "+" + s }
+        // 1) явные оверрайды
+        if let o = DialCodeFix.overrides[c.cca2] { return o }
+
+        // 2) если root пуст — попробуем суффикс как самостоятельный код (редко)
+        guard let rawRoot = c.idd?.root, !rawRoot.isEmpty else {
+            if let s = c.idd?.suffixes?.first, !s.isEmpty {
+                let sDigits = s.filter(\.isNumber)
+                return sDigits.isEmpty ? nil : "+" + sDigits
+            }
             return nil
         }
 
-        // 💥 спец-кейс: Åland Islands (AX) всегда +358
-        if c.cca2 == "AX" { return "+358" }
+        let root = rawRoot.trimmingCharacters(in: .whitespaces)
+        let rootDigits = root.filter(\.isNumber).count
 
-        // NANP и +7 оставляем как есть
-        if r == "+1" || r == "+7" { return r }
+        // 3) NANP и +7 — не разворачиваем в area-codes
+        if root == "+1" || root == "+7" { return root }
 
-        // если root короткий (+x или +xx) и есть суффикс — склеиваем
-        if r.count <= 2, let s = c.idd?.suffixes?.first, !s.isEmpty {
-            return r + s
+        // 4) Пытаемся собрать ИМЕННО страновой код (≤3 цифр суммарно)
+        if let s = c.idd?.suffixes?.first, !s.isEmpty {
+            let sDigits = s.filter(\.isNumber)
+
+            // сперва пробуем 2 цифры (даёт +380, +971, +994 и т.п.)
+            if sDigits.count >= 2, rootDigits + 2 <= 3 {
+                return root + sDigits.prefix(2)
+            }
+            // потом 1 цифру (даёт +39, +44, +34 и т.д.)
+            if sDigits.count >= 1, rootDigits + 1 <= 3 {
+                return root + sDigits.prefix(1)
+            }
+            // если хвост короткий сам по себе (редкий кейс)
+            if rootDigits + sDigits.count <= 3 {
+                return root + sDigits
+            }
         }
 
-        return r // уже полный код, типа +358, +380, +998 и т.д.
+        // 5) иначе — корневой код уже полный (+358, +380, ...)
+        return root
     }
 
     static func loadAll() async throws -> [Country] {
@@ -75,18 +106,8 @@ enum CountryProvider {
 
         for c in decoded {
             guard let dial = primaryDialCode(for: c) else { continue }
-                let name = loc.localizedString(forRegionCode: c.cca2) ?? c.name.common
-                let candidate = Country(iso: c.cca2, name: name, dialCode: dial)
-                byISO[c.cca2] = candidate
-
-            if let existed = byISO[c.cca2] {
-                // берём более короткий/«основной» вариант, если вдруг дубликат
-                if candidate.dialCode.count < existed.dialCode.count {
-                    byISO[c.cca2] = candidate
-                }
-            } else {
-                byISO[c.cca2] = candidate
-            }
+            let name = loc.localizedString(forRegionCode: c.cca2) ?? c.name.common
+            byISO[c.cca2] = Country(iso: c.cca2, name: name, dialCode: dial)
         }
 
         return Array(byISO.values)
@@ -151,19 +172,23 @@ struct CountryCodePicker: View {
                                 HStack {
                                     Text(c.flag)
                                     Text(c.name)
-                                        .foregroundStyle(AppColors.primary)
+                                        .foregroundStyle(AppColors.text)      // читаемое имя
                                     Spacer()
                                     Text(c.dialCode)
-                                        .foregroundStyle(AppColors.primary)
+                                        .foregroundStyle(AppColors.primary)   // код — зелёный
                                 }
                             }
+                            .listRowBackground(AppColors.surface.opacity(0.92))
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)            // убираем системный фон
+                        .background(AppColors.surface)               // фон под списком
+                        .listRowSeparatorTint(AppColors.text.opacity(0.12))
                     }
                 }
-                .searchable(text: $query, prompt: "Search country or code")
-                .navigationTitle("Select country")
-                .navigationBarTitleDisplayMode(.inline)
+                .tint(AppColors.primary)
             }
+            .presentationBackground(AppColors.surface)
         }
     }
 
@@ -229,30 +254,56 @@ struct SupportFormView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     // Name
+                    // Name
                     FieldContainer {
                         HStack(spacing: 10) {
                             Image(systemName: "person.text.rectangle")
-                                .foregroundStyle(.secondary)
-                            TextField("Your name", text: $name)
-                                .textContentType(.name)
-                                .textInputAutocapitalization(.words)
-                                .submitLabel(.next)
-                                .focused($focusedField, equals: .name)
-                                .onSubmit { focusedField = .phone }
+                                .foregroundStyle(AppColors.primary)
+
+                            ZStack(alignment: .leading) {
+                                // плейсхолдер
+                                if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("Your name")
+                                        .foregroundStyle(AppColors.text.opacity(0.75))
+                                        .allowsHitTesting(false)
+                                }
+
+                                TextField("", text: $name)
+                                    .foregroundStyle(AppColors.primary)
+                                    .tint(AppColors.primary)
+                                    .textContentType(.name)
+                                    .textInputAutocapitalization(.words)
+                                    .submitLabel(.next)
+                                    .focused($focusedField, equals: .name)
+                                    .onSubmit { focusedField = .phone }
+                            }
                         }
                     }
-                    
-                    // Phone with country code
+
+                    // Phone
                     FieldContainer {
                         HStack(spacing: 10) {
                             CountryCodePicker(selected: $country)
                             Divider().frame(height: 22)
-                            TextField("Phone number", text: $phone)
-                                .keyboardType(.phonePad)
-                                .textContentType(.telephoneNumber)
-                                .focused($focusedField, equals: .phone)
+
+                            ZStack(alignment: .leading) {
+                                if phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("Phone number")
+                                        .foregroundStyle(AppColors.text.opacity(0.75))
+                                        .allowsHitTesting(false)
+                                }
+
+                                TextField("", text: $phone)
+                                    .keyboardType(.phonePad)
+                                    .textContentType(.telephoneNumber)
+                                    .foregroundStyle(AppColors.primary)
+                                    .tint(AppColors.primary)
+                                    .focused($focusedField, equals: .phone)
+                            }
                         }
                     }
+
+
                     
                     // Message
                     EditorContainer(text: $message,
@@ -277,8 +328,12 @@ struct SupportFormView: View {
                     if !isValid {
                         Text("name: \(name.trimmed.count)  |  msg: \(message.trimmed.count)  |  phoneDigits: \(phone.onlyDigitsCount)")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColors.primary)
                         
+                        Text("Please fill all required fields to send your message.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppColors.primary)
+                            
                         if sending {
                             Color.black.opacity(0.15).ignoresSafeArea()
                             ProgressView("Sending...")
@@ -293,6 +348,9 @@ struct SupportFormView: View {
                 
                 
             }
+            .scrollDismissesKeyboard(.interactively) // свайпом вниз
+            .hideKeyboardOnTap()
+
             .navigationBarBackButtonHidden(true)
             .background(AppColors.background.ignoresSafeArea())
             .toolbar {
@@ -322,6 +380,11 @@ struct SupportFormView: View {
               Button("OK", role: .cancel) {}
             } message: { Text(alertText) }
         }
+    }
+    @MainActor
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
     
     private var isValid: Bool {
@@ -433,19 +496,21 @@ struct EditorContainer: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            FieldContainer { EmptyView() } // фон
+            FieldContainer { EmptyView() }
                 .frame(minHeight: minHeight)
 
             TextEditor(text: $text)
                 .scrollContentBackground(.hidden)
                 .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundStyle(AppColors.primary)      // цвет введённого текста
+                .tint(AppColors.primary)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 14)
                 .frame(minHeight: minHeight, alignment: .topLeading)
                 .overlay(alignment: .topLeading) {
                     if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text(placeholder)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColors.text.opacity(0.75)) // плейсхолдер темнее
                             .padding(.horizontal, 22)
                             .padding(.vertical, 18)
                             .allowsHitTesting(false)
@@ -454,6 +519,7 @@ struct EditorContainer: View {
         }
     }
 }
+
 
 /// Country dial code picker
 struct CountryCodeMenu: View {
@@ -530,6 +596,7 @@ struct AttachmentPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+
             HStack(spacing: 12) {
                 PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
                     Label("Attach photo", systemImage: "paperclip")
@@ -540,12 +607,17 @@ struct AttachmentPicker: View {
                         .background(AppColors.secondary.opacity(0.5))
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                if image != nil {
-                    Button {
-                        image = nil; photoItem = nil
-                    } label: {
-                        Label("Remove", systemImage: "xmark.circle.fill")
-                            .font(.subheadline)
+                // 👉 полностью отключаем picker, когда фото уже есть,
+                // чтобы он не перекрывал "Remove"
+                .disabled(image != nil)
+                .opacity(image == nil ? 1 : 0.5)
+                .onChange(of: photoItem?.itemIdentifier) { _ in
+                    guard let item = photoItem else { return }
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self),
+                           let ui = UIImage(data: data) {
+                            await MainActor.run { image = ui }
+                        }
                     }
                 }
             }
@@ -563,25 +635,25 @@ struct AttachmentPicker: View {
                         )
                         .shadow(color: .black.opacity(0.1), radius: 10, y: 6)
 
-                    Button {
-                        image = nil; photoItem = nil
-                    } label: {
+                    Button(action: clearPhoto) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.white, .black.opacity(0.4))
                             .font(.title3)
                             .padding(8)
                     }
+                    .buttonStyle(.plain)
                 }
                 .transition(.scale)
             }
         }
-        .task(id: photoItem) {
-            // загрузка выбранной фотки
-            guard let item = photoItem else { return }
-            if let data = try? await item.loadTransferable(type: Data.self),
-               let ui = UIImage(data: data) {
-                image = ui
-            }
+       
+    }
+
+    @MainActor
+    private func clearPhoto() {
+        withAnimation(.easeInOut) {
+            image = nil
+            photoItem = nil
         }
     }
 }

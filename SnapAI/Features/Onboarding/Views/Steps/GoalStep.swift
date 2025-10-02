@@ -17,6 +17,8 @@ struct GoalStep: View {
     
     @Environment(\.dismiss) private var dismiss
     
+    private var unitLabel: String { vm.data.unit == .imperial ? "lbs" : "kg" }
+    
     enum Mode {
             case onboarding
             case picker
@@ -73,12 +75,16 @@ struct GoalStep: View {
             Spacer()
 
             UnitTextField(vm: vm,
-                          placeholder: "Enter your desired weight",
+                          placeholder: selected == .maintain
+                                              ? "Your current weight (\(unitLabel))"
+                                              : "Enter your desired weight",
                           text: $desiredWeightText,
                           kind: .weight)
             .padding(.horizontal, 26)
+            .disabled(selected == .maintain)
+            .opacity(selected == .maintain ? 0.6 : 1.0)
             .onChange(of: desiredWeightText) { v in
-                            
+                guard selected != .maintain else { return }
                             if case .onboarding = mode {
                                 vm.data.desiredWeight = v.replacingOccurrences(of: ",", with: ".").doubleValue
                             }
@@ -87,16 +93,24 @@ struct GoalStep: View {
             Spacer()
 
             switch mode {
-                        case .onboarding:
-                            NavigationLink(destination: RateStep(vm: vm)) {
-                                Text("Next")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity, minHeight: 56)
-                                    .foregroundColor(.white)
-                                    .background(AppColors.secondary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                            }
-                            .simultaneousGesture(TapGesture().onEnded { vm.saveDraft() })
+            case .onboarding:
+                NavigationLink(destination: RateStep(vm: vm)) {
+                    Text("Next")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .foregroundColor(.white)
+                        .background(AppColors.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+                .simultaneousGesture(TapGesture().onEnded {
+                    // ✅ коммитим в VM перед сохранением драфта
+                    vm.data.goal = selected
+                    let txt = desiredWeightText.replacingOccurrences(of: ",", with: ".")
+                    vm.data.desiredWeight = (selected == .maintain) ? nil : Double(txt)
+                    vm.saveDraft()
+                })
+
+
                             .padding(.horizontal, 26)
                             .padding(.bottom, 28)
 
@@ -149,9 +163,51 @@ struct GoalStep: View {
                     }
                 }
         .onAppear {
-            vm.data.goal = selected
-        }
+                    // подтягиваем актуальные значения из vm.data
+                    selected = vm.data.goal ?? .lose
+
+                    if selected == .maintain {
+                        // показываем ТЕКУЩИЙ вес
+                        if let w = vm.data.weight {
+                            desiredWeightText = formatWeight(w)
+                        } else {
+                            desiredWeightText = ""
+                        }
+                        vm.data.desiredWeight = nil
+                    } else {
+                        // показываем ЦЕЛЕВОЙ вес
+                        if let w = vm.data.desiredWeight, w > 0 {
+                            desiredWeightText = formatWeight(w)
+                        } else {
+                            desiredWeightText = ""
+                        }
+                    }
+                }
+        .onChange(of: selected) { new in
+                    if new == .maintain {
+                        // при переключении на maintain — отобразим текущий вес, target убираем
+                        if let w = vm.data.weight {
+                            desiredWeightText = formatWeight(w)
+                        } else {
+                            desiredWeightText = ""
+                        }
+                        vm.data.desiredWeight = nil
+                    } else {
+                        // при переключении на lose/gain — вернём прежнее значение target (если было)
+                        if let w = vm.data.desiredWeight, w > 0 {
+                            desiredWeightText = formatWeight(w)
+                        } else {
+                            desiredWeightText = ""
+                        }
+                    }
+                }
+
+
     }
+    
+    private func formatWeight(_ w: Double) -> String {
+            (w.truncatingRemainder(dividingBy: 1) == 0) ? String(Int(w)) : String(w)
+        }
     
     // MARK: - Save for picker mode
         private func saveAndClose() async {
@@ -168,7 +224,13 @@ struct GoalStep: View {
             }
 
             do {
+                print("PATCH goal =", vm.data.goal?.apiValue ?? "nil")
                 try await AuthAPI.shared.updateProfile(from: vm.data)
+                
+                if let id = UserStore.id() {
+                        let p = try await AuthAPI.shared.getProfile(id: id)
+                        await MainActor.run { vm.data.fill(from: p) }   // у тебя есть fill(from:)
+                    }
 
                 await MainActor.run {
                     saving = false
