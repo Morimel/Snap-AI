@@ -65,7 +65,7 @@ struct StatisticsCard: View {
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
-                    .trim(from: 0, to: pPct)
+                    .trim(from: 0, to: fPct)
                     .stroke(lineWidth: 10)
                     .frame(width: 110, height: 110)
                     .rotationEffect(.degrees(-90))
@@ -92,7 +92,7 @@ struct StatisticsCard: View {
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 10, y: 10)
                 
                 Circle()
-                    .trim(from: 0, to: fPct)
+                    .trim(from: 0, to: pPct)
                     .stroke(lineWidth: 12)
                     .frame(width: 200, height: 200)
                     .rotationEffect(.degrees(-90))

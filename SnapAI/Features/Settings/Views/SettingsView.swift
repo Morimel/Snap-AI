@@ -195,13 +195,11 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
                 
                 Text("App version: 1.0.0")
                     .font(.footnote)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppColors.text)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 4)
             }
             .padding(.vertical, 16)
         }

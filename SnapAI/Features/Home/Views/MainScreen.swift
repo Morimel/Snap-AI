@@ -85,6 +85,8 @@ struct MainScreen: View {
                     } else {
                         ForEach(eaten) { item in
                             FoodCardView(meal: item.meal, image: (item.image))
+                                .contentShape(Rectangle())
+                                .onTapGesture { openDetail(for: item) }
                         }
                     }
                 }
@@ -147,6 +149,45 @@ struct MainScreen: View {
             }
             .task { await vm.ensurePlanLoaded() }
         }
+    
+    // MARK: - Open detail from card
+        private func openDetail(for item: EatenMeal) {
+            // 1) зачищаем состояние "анализа" и передаём выбранный meal
+            mealVM.resetForNewAnalyze()
+            mealVM.meal = item.meal
+
+            // 2) картинка: если есть локальная — берём её; иначе попробуем скачать по imagePath
+            if let img = item.image {
+                pendingCropped = img
+                showMealDetail = true
+                return
+            }
+
+            Task {
+                if let url = mediaURL(from: item.meal.imagePath),
+                   let (data, _) = try? await URLSession.shared.data(from: url),
+                   let ui = UIImage(data: data) {
+                    pendingCropped = ui
+                } else {
+                    pendingCropped = .previewPlaceholder
+                }
+                await MainActor.run { showMealDetail = true }
+            }
+        }
+    
+    // такой же помощник, как в FoodCardView (можно вынести в утиль)
+        private func mediaURL(from raw: String?) -> URL? {
+            guard let s0 = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !s0.isEmpty else { return nil }
+            var s = s0
+            if s.hasPrefix("/media/") || s.hasPrefix("media/") {
+                s = "https://snap-ai-app.com" + (s.hasPrefix("/") ? s : "/\(s)")
+            }
+            guard var comps = URLComponents(string: s) else { return nil }
+            if comps.scheme == nil { comps.scheme = "https"; comps.host = comps.host ?? "snap-ai-app.com" }
+            else if comps.scheme?.lowercased() == "http" { comps.scheme = "https" }
+            return comps.url
+        }
+    
     // MARK: - Helpers
     private func upsertFromVM(using image: UIImage?) {
         let m = mealVM.meal
