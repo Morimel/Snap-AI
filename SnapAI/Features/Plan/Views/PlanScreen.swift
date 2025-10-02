@@ -68,11 +68,11 @@ struct PlanScreen: View {
                                             .padding()
                                             .frame(height: 40)
                                             .background(Capsule().fill(.white))
-                                            .overlay(
-                                                Capsule()
-                                                    .stroke(AppColors.primary.opacity(0.1), lineWidth: 2)
-                                                    .frame(width: 220, height: 40)
-                                            )
+//                                            .overlay(
+//                                                Capsule()
+//                                                    .stroke(AppColors.primary.opacity(0.1), lineWidth: 2)
+//                                                    .frame(width: 220, height: 40)
+//                                            )
                     
                     HStack {
                         Text("Calorie and macronutrient\nrecommendations")

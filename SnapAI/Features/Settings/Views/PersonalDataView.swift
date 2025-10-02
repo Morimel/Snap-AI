@@ -61,7 +61,7 @@ struct PersonalDataView: View {
                     NavigationLink {
                         DateOfBirthStep(
                             vm: vm,
-                            mode: .picker { ageString in
+                            mode: .picker(initial: vm.data.birthDate) { ageString in
                                 age = ageString
                             }
                         )

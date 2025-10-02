@@ -27,35 +27,36 @@ struct MealDetailScreen: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    let title = vm.meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                    // Фото-«хедер»
-                    FixedHeaderImage(image: image, minH: 260, maxH: 480, heightRatio: 0.74)
-                        .offset(y: 0)
-
-                    // Карточка с данными
-                    VStack(alignment: .leading, spacing: 16) {
-                        ZStack(alignment: .leading) {
-                            if title.isEmpty {
-                                Text("Meal name")
-                                    .foregroundStyle(AppColors.text.opacity(0.75)) // цвет плейсхолдера
-                            } else {
-                                Text(title)
-                                    .foregroundStyle(AppColors.primary)            // цвет значения
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        let title = vm.meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        // Фото-«хедер»
+                        FixedHeaderImage(image: image, minH: 260, maxH: 480, heightRatio: 0.74)
+                            .offset(y: 0)
+                        
+                        // Карточка с данными
+                        VStack(alignment: .leading, spacing: 16) {
+                            ZStack(alignment: .leading) {
+                                if title.isEmpty {
+                                    Text("Meal name")
+                                        .foregroundStyle(AppColors.text.opacity(0.75)) // цвет плейсхолдера
+                                } else {
+                                    Text(title)
+                                        .foregroundStyle(AppColors.primary)            // цвет значения
+                                }
                             }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16).padding(.vertical, 12)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .shadow(color: AppColors.primary.opacity(0.4), radius: 12, x: 0, y: 4)
-
-                        /// Сетка метрик
-                        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 14) {
-                            MetricPill(title: "Callories", value: "\(vm.meal.calories) kcal")
-                            StepperPill(
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .shadow(color: AppColors.primary.opacity(0.4), radius: 12, x: 0, y: 4)
+                            
+                            /// Сетка метрик
+                            LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 14) {
+                                MetricPill(title: "Callories", value: "\(vm.meal.calories) kcal")
+                                StepperPill(
                                     title: "Servings",
                                     value: Binding(
                                         get: { vm.meal.servings },
@@ -64,117 +65,96 @@ struct MealDetailScreen: View {
                                     field: .servings,
                                     focused: $focusedField
                                 )
-                            MetricPill(title: "Proteins",
-                                       value: "\(vm.meal.proteins) g",
-                                       badge: .init(kind: .text("P"), color: AppColors.customBlue))
+                                MetricPill(title: "Proteins",
+                                           value: "\(vm.meal.proteins) g",
+                                           badge: .init(kind: .text("P"), color: AppColors.customBlue))
+                                
+                                MetricPill(title: "Carbohydrates",
+                                           value: "\(vm.meal.carbs) g",
+                                           badge: .init(kind: .text("C"), color: AppColors.customOrange))
+                                MetricPill(title: "Fats",
+                                           value: "\(vm.meal.fats) g",
+                                           badge: .init(kind: .text("F"), color: AppColors.customGreen))
+                                MetricPill(title: "Benefits",
+                                           value: "\(vm.meal.benefitScore)/10",
+                                           badge: .init(kind: .system("heart.fill"), color: AppColors.customRed))
+                            }
                             
-                            MetricPill(title: "Carbohydrates",
-                                       value: "\(vm.meal.carbs) g",
-                                       badge: .init(kind: .text("C"), color: AppColors.customOrange))
-                            MetricPill(title: "Fats",
-                                       value: "\(vm.meal.fats) g",
-                                       badge: .init(kind: .text("F"), color: AppColors.customGreen))
-                            MetricPill(title: "Benefits",
-                                       value: "\(vm.meal.benefitScore)/10",
-                                       badge: .init(kind: .system("heart.fill"), color: AppColors.customRed))
-                        }
-                        
-                        
-
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true }
-                        } label: {
-                            HStack(spacing: 8) {
-                                AppImages.ButtonIcons.Pen.lightPen
+                            
+                            
+                            Button {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    AppImages.ButtonIcons.Pen.lightPen
                                         .renderingMode(.template)
                                         .resizable()
                                         .scaledToFill()
                                         .frame(width: 20, height: 20)
-                                        
-                                Text("Edit")
+                                    
+                                    Text("Edit")
                                 }
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, minHeight: 56)
-                        }
-                        .buttonStyle(.plain)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(AppColors.secondary)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(.white.opacity(0.9), lineWidth: 1)
-                                .blendMode(.overlay)
-                                .offset(y: -1)
-                                .mask(
-                                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                        .fill(LinearGradient(colors: [.white, .clear],
-                                                             startPoint: .top, endPoint: .bottom))
-                                )
-                        )
-                        .foregroundStyle(.white)
-                        .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
-                        .zIndex(2)
-
-
-
-                        Text("Ingredients")
-                            .foregroundStyle(AppColors.primary)
-                            .font(.title)
-
-                        IngredientList(ingredients: Binding(
-                            get: { vm.meal.ingredients },
-                            set: { newValue in vm.update { $0.ingredients = newValue } }
-                        ))
-                        .disabled(true)
-                        
-                        Spacer()
-
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true }
-                        } label: {
-                            HStack(spacing: 8) {
-                                AppImages.ButtonIcons.share
+                            }
+                            .buttonStyle(.plain)
+                            .background(
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .fill(AppColors.secondary)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .stroke(.white.opacity(0.9), lineWidth: 1)
+                                    .blendMode(.overlay)
+                                    .offset(y: -1)
+                                    .mask(
+                                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                            .fill(LinearGradient(colors: [.white, .clear],
+                                                                 startPoint: .top, endPoint: .bottom))
+                                    )
+                            )
+                            .foregroundStyle(.white)
+                            .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
+                            .zIndex(2)
+                            
+                            
+                            
+                            Text("Ingredients")
+                                .foregroundStyle(AppColors.primary)
+                                .font(.title)
+                            
+                            IngredientList(ingredients: Binding(
+                                get: { vm.meal.ingredients },
+                                set: { newValue in vm.update { $0.ingredients = newValue } }
+                            ))
+                            .disabled(true)
+                            
+                            Spacer()
+                            
+                            Button { withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true } } label: {
+                                HStack(spacing: 8) {
+                                    AppImages.ButtonIcons.share
                                         .renderingMode(.template)
-                                        .resizable()
-                                        .scaledToFill()
+                                        .resizable().scaledToFill()
                                         .frame(width: 20, height: 20)
-                                        
-                                Text("Share")
+                                    Text("Share")
                                 }
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, minHeight: 56)
+                            }
+                            .buttonStyle(.plain)
+                            .background(RoundedRectangle(cornerRadius: 28).fill(AppColors.secondary))
+                            .overlay(RoundedRectangle(cornerRadius: 28).stroke(AppColors.primary.opacity(0.10), lineWidth: 1))
+                            .foregroundStyle(.white)
+                            .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
+                            .zIndex(2)
+                            
                         }
-                        .buttonStyle(.plain)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(AppColors.secondary)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(.white.opacity(0.9), lineWidth: 1)
-                                .blendMode(.overlay)
-                                .offset(y: -1)
-                                .mask(
-                                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                        .fill(LinearGradient(colors: [.white, .clear],
-                                                             startPoint: .top, endPoint: .bottom))
-                                )
-                        )
-                        .foregroundStyle(.white)
-                        .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
-                        .zIndex(2)
-
-                    }
-                    .padding(20)
+                        .padding(20)
                         .background(
                             RoundedRectangle(cornerRadius: 36, style: .continuous)
                                 .fill(AppColors.background)
@@ -185,9 +165,12 @@ struct MealDetailScreen: View {
                         )
                         .offset(y: -40)
                         .padding(.bottom, 12)
+                        .frame(maxHeight: .infinity)
+                    }
+                    .frame(minHeight: proxy.size.height)
                 }
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
 
             // Лоадер анализа
             if vm.isScanning {
@@ -200,6 +183,7 @@ struct MealDetailScreen: View {
 
             
         }
+        .ignoresSafeArea()
         .onReceive(NotificationCenter.default.publisher(for: .dismissToMainFromEdit)) { _ in
             if let onClose { onClose() } else { dismiss() }
         }
@@ -233,7 +217,6 @@ struct MealDetailScreen: View {
                     .opacity(chromeOpacity)
             }
         }
-        .ignoresSafeArea()
         .task {
             vm.restoreFromCache()
             if vm.meal.title.isEmpty && !vm.isScanning {

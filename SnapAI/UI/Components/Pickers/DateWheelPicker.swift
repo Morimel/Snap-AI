@@ -19,6 +19,7 @@ struct DateWheelPicker: View {
     private let years: [Int]
     
     @State private var dayStrings: [String]
+    @State private var isSyncing = false
 
 
     init(selected: Binding<Date>) {
@@ -88,7 +89,25 @@ struct DateWheelPicker: View {
             comps.year = years[year]
             comps.month = month + 1
             comps.day = day + 1
-            selected = Calendar.current.date(from: comps) ?? selected
+            selected = Calendar.current.date(from: comps)!.atNoon()
+        }
+    
+    private func syncFromSelected(_ date: Date) {
+            isSyncing = true
+            defer { isSyncing = false }
+
+            let cal = Calendar.current
+            let comps = cal.dateComponents([.year,.month,.day], from: date)
+
+            let newYearIndex  = years.firstIndex(of: comps.year ?? years.last!) ?? (years.count - 1)
+            let newMonthIndex = max(0, min(11, (comps.month ?? 1) - 1))
+            let daysCount     = Self.daysInMonth(monthIndex: newMonthIndex, year: years[newYearIndex])
+            let newDayIndex   = max(0, min(daysCount - 1, (comps.day ?? 1) - 1))
+
+            year = newYearIndex
+            month = newMonthIndex
+            dayStrings = (1...daysCount).map { String(format: "%02d", $0) }
+            day = newDayIndex
         }
     
     
@@ -116,6 +135,12 @@ private struct DatePickerPreviewContainer: View {
                 .preferredColorScheme(.dark)
                 .tint(AppColors.primary)
         }
+    }
+}
+
+extension Date {
+    func atNoon() -> Date {
+        Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: self) ?? self
     }
 }
 

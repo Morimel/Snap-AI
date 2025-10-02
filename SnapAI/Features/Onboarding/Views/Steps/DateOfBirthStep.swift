@@ -12,19 +12,32 @@ struct DateOfBirthStep: View {
     @ObservedObject var vm: OnboardingViewModel
 
    
-    enum Mode { case onboarding, picker(onSelect: (String) -> Void) }
+    enum Mode {
+        case onboarding
+        case picker(initial: Date?, onSelect: (String) -> Void)
+    }
     var mode: Mode = .onboarding
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedDate: Date = {
-        let cal = Calendar.current
-        // базовая дата: -25 лет от сегодня
-        let base = cal.date(byAdding: .year, value: -25, to: Date()) ?? Date()
-        // ставим день = 16
-        return cal.date(bySetting: .day, value: 15, of: base) ?? base
-    }()
+    @State private var selectedDate: Date
 
+    init(vm: OnboardingViewModel, mode: Mode = .onboarding) {
+            self.vm = vm
+            self.mode = mode
+
+            // дефолт: −25 лет и 15 число
+            let cal  = Calendar.current
+            let base = cal.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+            let def  = cal.date(bySetting: .day, value: 15, of: base) ?? base
+
+            // 👇 вот этот блок
+            var initial = (vm.data.birthDate ?? def).atNoon()
+            if case let .picker(initial: initialDate, onSelect: _) = mode, let d = initialDate {
+                initial = d.atNoon()
+            }
+            _selectedDate = State(initialValue: initial)
+        }
 
     var body: some View {
         VStack {
@@ -57,7 +70,7 @@ struct DateOfBirthStep: View {
                 .padding(.horizontal, 40)
                 .padding(.bottom, 28)
 
-            case .picker(let onSelect):
+            case .picker(initial: _, onSelect: let onSelect):
                 Button {
                     vm.data.birthDate = selectedDate
                     let ageString = makeAgeString(from: selectedDate)
@@ -100,9 +113,6 @@ struct DateOfBirthStep: View {
                         .foregroundStyle(AppColors.primary)
                 }
             }
-        }
-        .onAppear {
-            if let d = vm.data.birthDate { selectedDate = d }
         }
     }
 

@@ -131,61 +131,18 @@ struct AuthScreenRegister: View {
             }
             .padding(.vertical, 6)
             
-            // 🔽 ОФИЦИАЛЬНАЯ КНОПКА APPLE
-            HStack {
-                SignInWithAppleButton(.signIn) { request in
-                    request.requestedScopes = [.fullName, .email]
-                    // вернёт rawNonce и положит SHA256(raw) в request.nonce
-                    pendingNonce = appleSignInCoordinator.performNonceSetup(on: request)
-                } onCompletion: { result in
-                    switch result {
-                    case .failure(let error):
-                        // хотя бы одно действие в кейсе обязательно
-                        if (error as NSError).code == ASAuthorizationError.canceled.rawValue { return }
-                        alertMessage = error.localizedDescription
-
-                    case .success(let auth):
-                        guard
-                            let credential = auth.credential as? ASAuthorizationAppleIDCredential,
-                            let tokenData = credential.identityToken,
-                            let idToken = String(data: tokenData, encoding: .utf8),
-                            let raw = pendingNonce ?? appleSignInCoordinator.currentRawNonce
-                        else { alertMessage = "No identityToken or nonce"; return }
-
-                        // 🔎 DEBUG-проверка nonce
-                        #if DEBUG
-                        if let claims = JWTTools.payload(idToken),
-                           let claimNonce = claims["nonce"] as? String {
-                            let expect = HashUtils.sha256Hex(raw)
-                            print("aud=\(claims["aud"] ?? "nil"), nonce=\(claimNonce), expect=\(expect)")
-                            assert(claimNonce == expect, "Apple nonce claim != sha256(rawNonce)")
-                        }
-                        #endif
-
-                        isBusy = true
-                        Task {
-                            do {
-                                let pair = try await AuthAPI.shared.socialApple(idToken: idToken, nonceRaw: raw)
-                                handleAuthSuccess(pair)
-                                CurrentUser.ensureIdFromJWTIfNeeded()
-                                await MainActor.run { router.replace(with: [.gender]) }
-                            } catch {
-                                await MainActor.run { alertMessage = error.localizedDescription }
-                            }
-                            await MainActor.run { isBusy = false }
-                        }
-                    }
+            SocialButton(title: "Continue with Apple", systemImage: "apple.logo") {
+                guard !isBusy else { return }
+                isBusy = true
+                signInWithApple {
+                    // Успех
+                    CurrentUser.ensureIdFromJWTIfNeeded()
+                    router.replace(with: [.gender])
+                    isBusy = false
                 }
-                .signInWithAppleButtonStyle(.black)
-                .frame(height: 56)
-                .frame(maxWidth: 375)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-                .disabled(isBusy)
-                .opacity(isBusy ? 0.8 : 1)
             }
-            .frame(maxWidth: .infinity)
-           // центрируем кнопку в строке
-
+            .disabled(isBusy)
+            .opacity(isBusy ? 0.8 : 1)
             
             SocialButton(title: "Continue with Google", systemImage: "g.circle.fill") {
                 signInWithGoogleAndRoute(router: router)

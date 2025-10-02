@@ -10,6 +10,8 @@ import SwiftUI
 //MARK: - MainScreen
 struct MainScreen: View {
     
+    @Environment(\.scenePhase) private var scenePhase
+    
     @ObservedObject var vm: OnboardingViewModel
     
     @State private var selected = Date()
@@ -106,6 +108,28 @@ struct MainScreen: View {
             }
             .onAppear { refreshMeals() }
             .onChange(of: selected) { _ in refreshMeals() }
+        // 1) Авто-сброс в полночь
+            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+                // сегодня -> новый selected, чистим выбранные карточки, заново грузим еду
+                selected = Date()
+                selectedMeal = nil
+                selectedImage = nil
+                showMealDetail = false
+                refreshMeals()
+            }
+        // 2) Если день сменился, пока приложение было в фоне
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                let today = Date()
+                if !Calendar.current.isDate(selected, inSameDayAs: today) {
+                    selected = today
+                    selectedMeal = nil
+                    selectedImage = nil
+                    showMealDetail = false
+                    refreshMeals()
+                }
+            }
+        }
             .background(AppColors.background.ignoresSafeArea())
             .toolbarBackground(.hidden, for: .navigationBar)
             .navigationBarBackButtonHidden(true)
