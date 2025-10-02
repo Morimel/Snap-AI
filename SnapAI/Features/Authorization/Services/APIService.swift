@@ -847,10 +847,12 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
         switch result {
         case .failure(let error):
             print("Apple sign-in error:", error.localizedDescription)
+
         case .success(let payload):
             Task {
                 do {
                     let raw = payload.nonce ?? ""
+
                     #if DEBUG
                     if let claims = JWTTools.payload(payload.idToken),
                        let claimNonce = claims["nonce"] as? String {
@@ -860,8 +862,19 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
                     }
                     #endif
 
-                    let pair = try await AuthAPI.shared.socialApple(idToken: payload.idToken, nonceRaw: raw)
-                    // ...
+                    let pair = try await AuthAPI.shared.socialApple(
+                        idToken: payload.idToken,
+                        nonceRaw: raw
+                    )
+
+                    // 👇 сохраняем access/refresh + userId/email
+                    handleAuthSuccess(pair)
+                    CurrentUser.ensureIdFromJWTIfNeeded()
+
+                    await MainActor.run {
+                        UserDefaults.standard.set(true, forKey: AuthFlags.isRegistered)
+                        router.replace(with: [.gender]) // или твой следующий шаг
+                    }
                 } catch {
                     print("Apple token exchange failed:", error)
                 }
@@ -869,6 +882,7 @@ func signInWithAppleAndRoute(router: OnboardingRouter) {
         }
     }
 }
+
 
 
 
@@ -1211,8 +1225,19 @@ extension AuthAPI {
             carbsG       = try c.decodeFirstInt(for: [.carbs_g, .carbs, .carbohydrates])
             servings     = try? c.decode(Int.self, forKey: .servings)
             benefitScore = try? c.decodeFirstInt(for: [.benefit_score, .benefitScore])
-            ingredients  = try? c.decode([IngredientDTO].self, forKey: .ingredients)
+
+            // ✅ поддерживаем оба формата: массив ИЛИ строка с JSON
+            if let arr = try? c.decode([IngredientDTO].self, forKey: .ingredients) {
+                ingredients = arr
+            } else if let s = try? c.decode(String.self, forKey: .ingredients),
+                      let data = s.data(using: .utf8),
+                      let arr = try? JSONDecoder().decode([IngredientDTO].self, from: data) {
+                ingredients = arr
+            } else {
+                ingredients = nil
+            }
         }
+
 
         func toMeal() -> Meal {
             Meal(
@@ -1453,11 +1478,13 @@ extension AuthAPI {
             ]
 
             // массив ингредиентов кодируем в JSON-строку, если так ожидает бэк
-            let arr = meal.ingredients.map { ["name": $0.name, "kcal": $0.kcal] }
-            if let data = try? JSONSerialization.data(withJSONObject: arr),
-               let str  = String(data: data, encoding: .utf8) {
-                fields["ingredients"] = str
-            }
+//            let arr = meal.ingredients.map { ["name": $0.name, "kcal": $0.kcal] }
+//            if let data = try? JSONSerialization.data(withJSONObject: arr),
+//               let str  = String(data: data, encoding: .utf8) {
+//                fields["ingredients"] = str
+//            }
+            fields["ingredients"] = meal.ingredients.map { ["name": $0.name, "kcal": $0.kcal] }
+
 
             if debugAPI {
                 if let pretty = try? JSONSerialization.data(withJSONObject: fields, options: .prettyPrinted),

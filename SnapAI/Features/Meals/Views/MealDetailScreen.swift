@@ -18,6 +18,7 @@ struct MealDetailScreen: View {
     var onClose: (() -> Void)? = nil
     private let chromeOpacity: Double = 0.6
     @Environment(\.scenePhase) private var scenePhase
+    var autoScan: Bool = true
     
     @State private var showAddIngredient = false
     
@@ -28,25 +29,27 @@ struct MealDetailScreen: View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(spacing: 16) {
+                    let title = vm.meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+
                     // Фото-«хедер»
-                    FixedHeaderImage(image: image)
-                        .offset(y: 20)
+                    FixedHeaderImage(image: image, minH: 260, maxH: 480, heightRatio: 0.74)
+                        .offset(y: 0)
 
                     // Карточка с данными
                     VStack(alignment: .leading, spacing: 16) {
-                        TextField("Meal name", text: Binding(
-                            get: { vm.meal.title },
-                            set: { _ in }   /// read-only в просмотре
-                        ))
-                        .disabled(true)
-                        .padding()
-                        .foregroundStyle(AppColors.primary)
+                        ZStack(alignment: .leading) {
+                            if title.isEmpty {
+                                Text("Meal name")
+                                    .foregroundStyle(AppColors.text.opacity(0.75)) // цвет плейсхолдера
+                            } else {
+                                Text(title)
+                                    .foregroundStyle(AppColors.primary)            // цвет значения
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16).padding(.vertical, 12)
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(.clear)
-                        }
                         .shadow(color: AppColors.primary.opacity(0.4), radius: 12, x: 0, y: 4)
 
                         /// Сетка метрик
@@ -63,17 +66,17 @@ struct MealDetailScreen: View {
                                 )
                             MetricPill(title: "Proteins",
                                        value: "\(vm.meal.proteins) g",
-                                       badge: .init(kind: .text("P"), color: .blue))
+                                       badge: .init(kind: .text("P"), color: AppColors.customBlue))
                             
                             MetricPill(title: "Carbohydrates",
                                        value: "\(vm.meal.carbs) g",
-                                       badge: .init(kind: .text("C"), color: .orange))
+                                       badge: .init(kind: .text("C"), color: AppColors.customOrange))
                             MetricPill(title: "Fats",
                                        value: "\(vm.meal.fats) g",
-                                       badge: .init(kind: .text("F"), color: .green))
+                                       badge: .init(kind: .text("F"), color: AppColors.customGreen))
                             MetricPill(title: "Benefits",
                                        value: "\(vm.meal.benefitScore)/10",
-                                       badge: .init(kind: .system("heart.fill"), color: .red))
+                                       badge: .init(kind: .system("heart.fill"), color: AppColors.customRed))
                         }
                         
                         
@@ -127,6 +130,9 @@ struct MealDetailScreen: View {
                             get: { vm.meal.ingredients },
                             set: { newValue in vm.update { $0.ingredients = newValue } }
                         ))
+                        .disabled(true)
+                        
+                        Spacer()
 
                         Button {
                             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { showEditor = true }
@@ -229,11 +235,11 @@ struct MealDetailScreen: View {
         }
         .ignoresSafeArea()
         .task {
-                    vm.restoreFromCache()                 // ⬅️ если есть — поднимем
-                    if vm.meal.title.isEmpty && !vm.isScanning {
-                        await vm.scan(image: image)       // ⬅️ только если реально пусто
-                    }
-                }
+            vm.restoreFromCache()
+            if vm.meal.title.isEmpty && !vm.isScanning {
+                vm.scan(image: image)   // без await
+            }
+        }
         .onChange(of: scenePhase) { phase in
             if phase == .inactive || phase == .background {
                 vm.cancelScan()            // ⛔️ отменяем активный аплоад
@@ -289,7 +295,7 @@ private struct IngredientRow: View {
 
                 Text("\(ing.kcal) kcal")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColors.primary)
             }
             .padding(.horizontal, 16)
             .frame(height: 52)
@@ -297,16 +303,6 @@ private struct IngredientRow: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(Color.black.opacity(0.08), lineWidth: 1)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(
-                        LinearGradient(colors: [.white.opacity(0.6), .clear],
-                                       startPoint: .topLeading,
-                                       endPoint: .bottomTrailing),
-                        lineWidth: 1
-                    )
-                    .blendMode(.plusLighter)
             )
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .shadow(color: .black.opacity(0.06), radius: 4, y: 0)

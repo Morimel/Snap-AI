@@ -25,13 +25,13 @@ struct FoodCardView: View {
                 
                 HStack {
                     MetricPillCard(value: "\(meal.proteins) g",
-                                   badge: .init(kind: .text("P"), color: .blue))
+                                   badge: .init(kind: .text("P"), color: AppColors.customBlue))
                     
                     MetricPillCard(value: "\(meal.carbs) g",
-                                   badge: .init(kind: .text("P"), color: .blue))
+                                   badge: .init(kind: .text("C"), color: AppColors.customOrange))
                     
                     MetricPillCard(value: "\(meal.fats) g",
-                                   badge: .init(kind: .text("P"), color: .blue))
+                                   badge: .init(kind: .text("F"), color: AppColors.customGreen))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

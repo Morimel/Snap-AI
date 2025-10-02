@@ -15,6 +15,9 @@ struct MainScreen: View {
     @State private var selected = Date()
     @State private var isLoadingMeals = false
     
+    @State private var selectedMeal: Meal?
+    @State private var selectedImage: UIImage?
+    
     var onNext: (() -> Void)? = nil
     private var p: PersonalPlan? { vm.personalPlan }
     
@@ -84,9 +87,12 @@ struct MainScreen: View {
                         EpmtyCardView()
                     } else {
                         ForEach(eaten) { item in
-                            FoodCardView(meal: item.meal, image: (item.image))
-                                .contentShape(Rectangle())
-                                .onTapGesture { openDetail(for: item) }
+                            Button {
+                                    openDetail(for: item)
+                                } label: {
+                                    FoodCardView(meal: item.meal, image: item.image)
+                                }
+                                .buttonStyle(.plain)
                         }
                     }
                 }
@@ -139,18 +145,22 @@ struct MainScreen: View {
                         image: img,
                         vm: mealVM,
                         onClose: {
-                            upsertFromVM(using: pendingCropped)
                             showMealDetail = false
-                        }   // ⬅️ корректный pop
+                            pendingCropped = nil
+                        }
                     )
                 } else {
-                    Text("No image").foregroundStyle(.secondary)
+                    // сюда мы теперь вообще не попадём
+                    ProgressView()
                 }
             }
+
+
             .task { await vm.ensurePlanLoaded() }
         }
     
     // MARK: - Open detail from card
+    @MainActor
         private func openDetail(for item: EatenMeal) {
             // 1) зачищаем состояние "анализа" и передаём выбранный meal
             mealVM.resetForNewAnalyze()
@@ -164,15 +174,18 @@ struct MainScreen: View {
             }
 
             Task {
-                if let url = mediaURL(from: item.meal.imagePath),
-                   let (data, _) = try? await URLSession.shared.data(from: url),
-                   let ui = UIImage(data: data) {
-                    pendingCropped = ui
-                } else {
-                    pendingCropped = .previewPlaceholder
+                    var ui: UIImage? = nil
+                    if let url = mediaURL(from: item.meal.imagePath),
+                       let (data, _) = try? await URLSession.shared.data(from: url) {
+                        ui = UIImage(data: data)
+                    }
+
+                    // 👇 ВСЕ обновления стейта — на MainActor и только затем пушим экран
+                    await MainActor.run {
+                        self.pendingCropped = ui ?? .previewPlaceholder
+                        self.showMealDetail = true
+                    }
                 }
-                await MainActor.run { showMealDetail = true }
-            }
         }
     
     // такой же помощник, как в FoodCardView (можно вынести в утиль)

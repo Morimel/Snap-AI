@@ -13,16 +13,22 @@ struct MealEditSheet: View {
     @Binding var isPresented: Bool
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAddIngredient = false
+    
+    @State private var saving = false
+    @State private var showSnack = false
+    @State private var snackText = "Saved"
+    @State private var localError: String?
 
     @State private var draft = Meal()
 
     var body: some View {
         VStack(spacing: 16) {
-//            grabber
+            grabber
 
             Text("Edit mode")
                 .foregroundStyle(AppColors.primary)
                 .font(.title)
+                .padding(.top, 8)
 
             ScrollView {
                 form
@@ -33,16 +39,17 @@ struct MealEditSheet: View {
                 .padding(.bottom, 16)
                 
                 
-                Button("Save") {
-                    Task {
-                           await vm.saveAndRecompute(from: draft)
-                           await MainActor.run {
-                               withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { isPresented = false }
-                           }
-                       }
+                Button {
+                    Task { await saveAndClose() }
+                } label: {
+                    Text(saving ? "Saving..." : "Save")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .foregroundColor(.white)
+                        .contentTransition(.opacity)
                 }
-                .buttonStyle(.plain) // убираем системные артефакты
-                .frame(maxWidth: .infinity, minHeight: 56)
+                .disabled(saving)
+                .buttonStyle(.plain)
                 .background(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(AppColors.secondary)
@@ -52,7 +59,6 @@ struct MealEditSheet: View {
                         .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
                 )
                 .overlay(
-                    // верхняя мягкая подсветка
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(.white.opacity(0.9), lineWidth: 1)
                         .blendMode(.overlay)
@@ -67,8 +73,25 @@ struct MealEditSheet: View {
                 .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
                 .zIndex(2)
                 .padding(.horizontal)
+
             }
+            .overlay {
+                if saving {
+                    ProgressView()
+                        .padding(14)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                }
+            }
+
             .scrollIndicators(.hidden)
+        }
+        .overlay(alignment: .bottom) {
+            if showSnack {
+                SnackBarView(text: snackText)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 8)
+            }
         }
         .hideKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
@@ -95,6 +118,8 @@ struct MealEditSheet: View {
                         draft.ingredients.append(newIng)   // 👈 добавляем в черновик
                     }
                 }
+        
+        
     }
 
     
@@ -143,16 +168,17 @@ struct MealEditSheet: View {
 
     // MARK: - Subviews
 
-//    private var grabber: some View {
-//        Capsule()
-//            .frame(width: 44, height: 5)
-//            .foregroundStyle(Color.secondary.opacity(0.3))
-//            .padding(.top, 8)
-//    }
+    private var grabber: some View {
+        Capsule()
+            .frame(width: 44, height: 5)
+            .foregroundStyle(AppColors.secondary.opacity(0.3))
+            .padding(.top, 8)
+    }
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 16) {
             TextField("Meal name", text: $draft.title)
+                .foregroundStyle(AppColors.primary)
                 .padding()
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -176,6 +202,49 @@ struct MealEditSheet: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
     }
+    
+    private func saveAndClose() async {
+        await MainActor.run {
+            saving = true
+            localError = nil
+            // если надо — спрятать клаву:
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+
+        // скидываем старую ошибку VM и сохраняем черновик
+        await MainActor.run { vm.error = nil }
+
+        // PATCH + RECOMPUTE
+        await vm.saveAndRecompute(from: draft)
+
+        // проверяем исход
+        let err = await MainActor.run { vm.error }
+        if let err, !err.isEmpty {
+            await MainActor.run {
+                saving = false
+                localError = err
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+            }
+            return
+        }
+
+        await MainActor.run {
+            saving = false
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            snackText = "Saved"
+            withAnimation { showSnack = true }
+        }
+
+        // показываем снек и закрываем
+        try? await Task.sleep(nanoseconds: 1_400_000_000)
+        await MainActor.run {
+            withAnimation { showSnack = false }
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+                isPresented = false
+            }
+        }
+    }
+
 }
 
 private func metricField(title: String, value: Binding<Int>, unit: String) -> some View {

@@ -155,6 +155,9 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				App/SnapAIApp.swift,
+				Features/Authorization/Services/APIService.swift,
+				Features/Home/Views/MainScreen.swift,
+				Features/Meals/Views/MealDetailScreen.swift,
 				Features/Onboarding/Models/OnBoardingData.swift,
 				"Features/Onboarding/Models/OnboardingData+UI.swift",
 				Features/Onboarding/Models/OnboardingPhase.swift,

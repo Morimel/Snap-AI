@@ -15,6 +15,11 @@ struct ChangeTargetView: View {
     @State private var carbohydrates: Int
     @State private var fats: Int
     
+    @State private var saving = false
+    @State private var showSnack = false
+    @State private var snackText = "Saved"
+    @State private var error: String?
+    
     let onSave: (Int, Int, Int, Int) async -> Void
     
     @FocusState private var focusedField: Field?
@@ -80,38 +85,31 @@ struct ChangeTargetView: View {
             .padding(.vertical, 20)
             
             
-            Button("Save") {
-                Task {
-                    await onSave(calories, proteins, carbohydrates, fats)
-                    dismiss()
-                }
+            Button {
+                Task { await saveAndClose() }
+            } label: {
+                Text(saving ? "Saving..." : "Save")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .foregroundColor(.white)
+                    .background(AppColors.secondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
-            .buttonStyle(.plain) // убираем системные артефакты
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(AppColors.secondary)
-            )
+            .disabled(saving)
+            .buttonStyle(.plain)
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(AppColors.primary.opacity(0.10), lineWidth: 1)
             )
-            .overlay(
-                // верхняя мягкая подсветка
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(.white.opacity(0.9), lineWidth: 1)
-                    .blendMode(.overlay)
-                    .offset(y: -1)
-                    .mask(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(LinearGradient(colors: [.white, .clear],
-                                                 startPoint: .top, endPoint: .bottom))
-                    )
-            )
-            .foregroundStyle(.white)
             .shadow(color: AppColors.primary.opacity(0.10), radius: 12, x: 0, y: 4)
-            .zIndex(2)            
+            .zIndex(2)
+
             Spacer()
+        }
+        .overlay(alignment: .bottom) {
+            if showSnack {
+                SnackBarView(text: snackText)
+            }
         }
         .hideKeyboardOnTap()
         .scrollDismissesKeyboard(.immediately)
@@ -137,6 +135,32 @@ struct ChangeTargetView: View {
             }
         }
     }
+    
+    private func saveAndClose() async {
+        await MainActor.run {
+            saving = true
+            error = nil
+            focusedField = nil
+        }
+
+        // тут — твои данные уже в @State (calories/proteins/...), просто пробрасываем
+        await onSave(calories, proteins, carbohydrates, fats)
+
+        await MainActor.run {
+            saving = false
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            snackText = "Saved"
+            withAnimation { showSnack = true }
+        }
+
+        try? await Task.sleep(nanoseconds: 1_400_000_000)
+
+        await MainActor.run {
+            withAnimation { showSnack = false }
+            dismiss()
+        }
+    }
+
 }
 
 
